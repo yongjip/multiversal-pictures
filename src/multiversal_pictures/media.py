@@ -122,9 +122,11 @@ def mix_narration_audio(
 ) -> str:
     ffmpeg = ffmpeg_executable()
     video_info = probe_media(video_path, ffmpeg=ffmpeg)
+    clip_audio_volume = max(0.0, float(clip_audio_volume))
+    narration_volume = max(0.0, float(narration_volume))
 
     command = [ffmpeg, "-y" if overwrite else "-n", "-i", str(video_path), "-i", str(narration_audio_path)]
-    if video_info.has_audio:
+    if video_info.has_audio and clip_audio_volume > 0:
         filter_complex = (
             f"[0:a]volume={clip_audio_volume}[clip];"
             f"[1:a]volume={narration_volume}[narration];"

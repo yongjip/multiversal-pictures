@@ -145,6 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched output.")
     render_parser.add_argument("--clip-audio-volume", type=float, help="Mix level for original clip audio when narration is present.")
     render_parser.add_argument("--narration-volume", type=float, help="Mix level for narration audio.")
+    render_parser.add_argument("--mute-clip-audio", action="store_true", help="Mute original clip audio when mixing narration.")
 
     character_parser = subparsers.add_parser("create-character", help="Create a reusable character from a reference video.")
     character_parser.add_argument("--video", required=True, help="Absolute or relative path to a reference video file.")
@@ -176,6 +177,7 @@ def build_parser() -> argparse.ArgumentParser:
     stitch_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched video.")
     stitch_parser.add_argument("--clip-audio-volume", type=float, help="Mix level for original clip audio when narration is present.")
     stitch_parser.add_argument("--narration-volume", type=float, help="Mix level for narration audio.")
+    stitch_parser.add_argument("--mute-clip-audio", action="store_true", help="Mute original clip audio when mixing narration.")
 
     return parser
 
@@ -296,7 +298,7 @@ def cmd_render_shotlist(args: argparse.Namespace) -> int:
                 output_path=Path(args.stitch_output).resolve(),
                 overwrite=bool(args.stitch_overwrite),
                 narration_audio_path=Path(args.narration_audio).resolve() if args.narration_audio else None,
-                clip_audio_volume=args.clip_audio_volume,
+                clip_audio_volume=0.0 if args.mute_clip_audio else args.clip_audio_volume,
                 narration_volume=args.narration_volume,
             )
             print(f"Wrote stitched video: {stitch_manifest['output_path']}")
@@ -371,7 +373,7 @@ def cmd_stitch_run(args: argparse.Namespace) -> int:
         output_path=Path(args.output).resolve(),
         overwrite=bool(args.overwrite),
         narration_audio_path=Path(args.narration_audio).resolve() if args.narration_audio else None,
-        clip_audio_volume=args.clip_audio_volume,
+        clip_audio_volume=0.0 if args.mute_clip_audio else args.clip_audio_volume,
         narration_volume=args.narration_volume,
     )
     print(f"Wrote stitched video: {stitch_manifest['output_path']}")

@@ -47,7 +47,7 @@ def stitch_run(
             narration_audio_path=narration_audio_path,
             output_path=output_path,
             overwrite=overwrite,
-            clip_audio_volume=clip_audio_volume if clip_audio_volume is not None else float(os.getenv("STORYBOOK_CLIP_AUDIO_VOLUME", "0.35")),
+            clip_audio_volume=clip_audio_volume if clip_audio_volume is not None else float(os.getenv("STORYBOOK_CLIP_AUDIO_VOLUME", "0.0")),
             narration_volume=narration_volume if narration_volume is not None else float(os.getenv("STORYBOOK_NARRATION_VOLUME", "1.0")),
         )
         if temp_base_path.exists() and temp_base_path != output_path:

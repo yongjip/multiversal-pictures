@@ -83,6 +83,7 @@ multiversal-pictures stitch-run \
   --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story \
   --output /Users/yongjip/Projects/potato-king/runs/panda_story/story-with-narration.mp4 \
   --narration-audio /Users/yongjip/Projects/potato-king/runs/panda_story/narration/narration.wav \
+  --mute-clip-audio \
   --overwrite
 ```
 
@@ -93,5 +94,5 @@ multiversal-pictures stitch-run \
 - clips are generated as expressive visuals, not dialogue performances
 - narration is planned per shot and exported for TTS or human voiceover
 - shots can render concurrently and then be stitched into one master video
-- stitched masters can mix the clip audio bed with synthesized narration
+- stitched masters default to narration-first audio; clip audio can be added back only if needed
 - this avoids unstable lip-sync and keeps children’s-story pacing under tighter control
