@@ -1,0 +1,98 @@
+from __future__ import annotations
+
+import json
+import urllib.error
+import urllib.request
+from typing import Any, Dict, List, Optional
+
+from .openai_videos import OpenAIAPIError
+
+
+class OpenAIResponsesClient:
+    def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1", timeout: int = 600):
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is required.")
+        self.api_key = api_key
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+
+    def create_structured_response(
+        self,
+        *,
+        model: str,
+        instructions: str,
+        input_messages: List[Dict[str, Any]],
+        schema: Dict[str, Any],
+        reasoning_effort: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {
+            "model": model,
+            "instructions": instructions,
+            "input": input_messages,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "strict": True,
+                    "schema": schema,
+                }
+            },
+        }
+        if reasoning_effort:
+            payload["reasoning"] = {"effort": reasoning_effort}
+
+        return self._json("POST", "/responses", payload)
+
+    def _json(self, method: str, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        url = f"{self.base_url}{path}"
+        body = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            url=url,
+            method=method.upper(),
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, data=body, timeout=self.timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            raw = error.read().decode("utf-8", errors="replace")
+            try:
+                payload = json.loads(raw)
+                message = payload.get("error", {}).get("message", raw)
+            except json.JSONDecodeError:
+                message = raw
+            raise OpenAIAPIError(f"OpenAI request failed ({error.code}): {message}") from error
+
+
+def extract_response_json(response: Dict[str, Any]) -> Dict[str, Any]:
+    output_text = response.get("output_text")
+    if not output_text:
+        output_text = _extract_output_text(response)
+    if not output_text:
+        refusal = _extract_refusal(response)
+        if refusal:
+            raise OpenAIAPIError(f"Model refused the request: {refusal}")
+        raise OpenAIAPIError("Responses API did not return output_text.")
+    return json.loads(output_text)
+
+
+def _extract_output_text(response: Dict[str, Any]) -> str:
+    parts: List[str] = []
+    for item in response.get("output", []) or []:
+        for content in item.get("content", []) or []:
+            if content.get("type") in {"output_text", "text"} and isinstance(content.get("text"), str):
+                parts.append(content["text"])
+    return "".join(parts).strip()
+
+
+def _extract_refusal(response: Dict[str, Any]) -> str:
+    messages: List[str] = []
+    for item in response.get("output", []) or []:
+        for content in item.get("content", []) or []:
+            if content.get("type") == "refusal":
+                value = content.get("refusal")
+                if isinstance(value, str):
+                    messages.append(value)
+    return " ".join(messages).strip()

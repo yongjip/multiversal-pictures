@@ -1,0 +1,68 @@
+{
+  "project": {
+    "title": "Pobi Bamboo Breakfast",
+    "model": "sora-2-pro",
+    "size": "1280x720",
+    "seconds": "8",
+    "poll_interval_seconds": 10,
+    "download_variants": [
+      "video",
+      "thumbnail"
+    ],
+    "style_notes": "polished storybook animation, gentle cinematic motion, soft textures, clear focal composition",
+    "consistency_notes": "Pobi is a small round panda cub with soft black-and-white fur, bright curious eyes, and a tiny green scarf. Keep his face shape, body proportions, and scarf consistent across all shots.",
+    "constraints": [
+      "family-friendly children's story tone",
+      "no text, no subtitles, no watermark",
+      "clean anatomy and natural motion",
+      "no scary imagery or aggressive action"
+    ],
+    "audio_notes": "Gentle bamboo forest ambience and soft birdsong, no spoken dialogue."
+  },
+  "shots": [
+    {
+      "id": "shot-01-morning",
+      "title": "Pobi wakes up",
+      "shot_type": "Wide storybook shot",
+      "subject": "Pobi, a small round panda cub",
+      "action": "wakes up in a bamboo bed, stretches his paws, and smiles sleepily",
+      "setting": "a cozy bamboo hut on a green mountain at sunrise",
+      "lighting": "soft golden sunrise light through paper windows",
+      "camera_motion": "slow push-in",
+      "mood": "warm, calm, child-friendly"
+    },
+    {
+      "id": "shot-02-walk",
+      "title": "Pobi walks to breakfast",
+      "shot_type": "Medium tracking shot",
+      "subject": "Pobi, the same panda cub",
+      "action": "waddles happily along a forest path toward a bamboo grove",
+      "setting": "a misty bamboo forest with dew on the leaves",
+      "lighting": "fresh morning light with soft haze",
+      "camera_motion": "gentle side-tracking move",
+      "mood": "playful and peaceful"
+    },
+    {
+      "id": "shot-03-bamboo",
+      "title": "Crunchy bamboo breakfast",
+      "shot_type": "Close-up storybook shot",
+      "subject": "Pobi, the same panda cub",
+      "action": "takes a big crunchy bite of fresh bamboo and smiles with delight",
+      "setting": "a bright bamboo grove filled with fresh green leaves",
+      "lighting": "clean daylight with soft highlights on the leaves",
+      "camera_motion": "subtle drifting close-up",
+      "mood": "cozy and joyful"
+    },
+    {
+      "id": "shot-04-sharing",
+      "title": "Sharing with friends",
+      "shot_type": "Wide ensemble shot",
+      "subject": "Pobi, the same panda cub, with a tiny red bird, a rabbit, and a shy deer",
+      "action": "shares berries, apples, and tender leaves with the forest friends",
+      "setting": "a sunny clearing beside the bamboo grove",
+      "lighting": "warm morning sunlight with soft sparkles through the trees",
+      "camera_motion": "slow circular move around the group",
+      "mood": "kind, gentle, celebratory"
+    }
+  ]
+}

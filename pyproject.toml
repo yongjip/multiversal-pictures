@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multiversal-pictures"
+version = "0.1.0"
+description = "Shotlist-driven Python CLI for stable OpenAI video clip generation in Multiversal Pictures."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "Yongjip Kim" }
+]
+dependencies = []
+
+[project.scripts]
+multiversal-pictures = "multiversal_pictures.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
