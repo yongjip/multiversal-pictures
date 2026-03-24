@@ -180,11 +180,11 @@ class StoryToShotlistAgent:
 
 
 def default_agent_model() -> str:
-    return os.getenv("OPENAI_AGENT_MODEL", "gpt-5-mini")
+    return os.getenv("OPENAI_AGENT_MODEL", "gpt-5.4")
 
 
 def default_agent_reasoning_effort() -> str:
-    return os.getenv("OPENAI_AGENT_REASONING_EFFORT", "low")
+    return os.getenv("OPENAI_AGENT_REASONING_EFFORT", "medium")
 
 
 def _format_story_brief_for_model(story_brief: Dict[str, Any]) -> str:

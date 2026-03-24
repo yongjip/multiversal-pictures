@@ -497,7 +497,7 @@ def cmd_export_narration(args: argparse.Namespace) -> int:
 
 def cmd_synthesize_narration(args: argparse.Namespace) -> int:
     client = _speech_client_from_env()
-    model = args.model or os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
+    model = args.model or os.getenv("OPENAI_TTS_MODEL", "tts-1-hd")
     voice = args.voice or os.getenv("OPENAI_TTS_VOICE", "alloy")
     response_format = args.response_format or os.getenv("OPENAI_TTS_RESPONSE_FORMAT", "wav")
     default_offset_ms = args.default_offset_ms or int(os.getenv("STORYBOOK_NARRATION_OFFSET_MS", "500"))

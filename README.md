@@ -26,6 +26,15 @@ cp /Users/yongjip/Projects/potato-king/.env.example /Users/yongjip/Projects/pota
 
 Set `OPENAI_API_KEY` in `/Users/yongjip/Projects/potato-king/.env`.
 
+Recommended quality-first defaults:
+
+```bash
+OPENAI_AGENT_MODEL=gpt-5.4
+OPENAI_AGENT_REASONING_EFFORT=medium
+OPENAI_VIDEO_MODEL=sora-2-pro
+OPENAI_TTS_MODEL=tts-1-hd
+```
+
 ## Agent Workflow
 
 - `generate-shotlist`: story prompt -> story brief -> shotlist JSON

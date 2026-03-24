@@ -91,7 +91,7 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
 
     poll_interval = config.poll_interval or int(project.get("poll_interval_seconds") or os.getenv("OPENAI_POLL_INTERVAL_SECONDS", "10"))
     timeout_seconds = config.timeout_seconds or int(os.getenv("OPENAI_VIDEO_TIMEOUT_SECONDS", "1800"))
-    narration_model = config.narration_model or os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
+    narration_model = config.narration_model or os.getenv("OPENAI_TTS_MODEL", "tts-1-hd")
     narration_voice = config.narration_voice or os.getenv("OPENAI_TTS_VOICE", "alloy")
     narration_response_format = config.narration_response_format or os.getenv("OPENAI_TTS_RESPONSE_FORMAT", "wav")
 
