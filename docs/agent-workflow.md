@@ -36,7 +36,7 @@ flowchart LR
 - `Final Edit`
   - can mix narration, optional background music, and optional clip ambience
   - ducks music under narration for cleaner storybook audio
-  - can embed subtitle tracks into the stitched master
+  - can embed subtitle tracks into the stitched master or burn them into frames
 - `Render Agent`
   - executes the shot list with the OpenAI Videos API
   - polls job status and downloads result assets
@@ -155,6 +155,26 @@ multiversal-pictures stitch-run \
   --mute-clip-audio \
   --overwrite
 ```
+
+Burn subtitles into the video:
+
+```bash
+multiversal-pictures stitch-run \
+  --run-dir runs/panda_story \
+  --output runs/panda_story/story-with-burned-subtitles.mp4 \
+  --narration-audio runs/panda_story/narration/narration.wav \
+  --background-music /absolute/path/to/music.wav \
+  --subtitle-file runs/panda_story/narration/captions.srt \
+  --burn-subtitles \
+  --subtitle-preset large \
+  --subtitle-layout auto \
+  --mute-clip-audio \
+  --overwrite
+```
+
+Preset options for burned subtitles: `storybook`, `large`, `minimal`, `high-contrast`.
+Layout options for burned subtitles: `widescreen`, `vertical`, `auto`.
+Burned subtitle presets auto-scale to the output resolution; use `STORYBOOK_SUBTITLE_FONT_SCALE` and `STORYBOOK_SUBTITLE_MARGIN_SCALE` if you need global tuning.
 
 ## OpenAI APIs used
 

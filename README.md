@@ -97,6 +97,20 @@ multiversal-pictures stitch-run \
   --overwrite
 ```
 
+```bash
+multiversal-pictures stitch-run \
+  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story/story-with-burned-subtitles.mp4 \
+  --narration-audio /Users/yongjip/Projects/potato-king/runs/panda_story/narration/narration.wav \
+  --background-music /absolute/path/to/music.wav \
+  --subtitle-file /Users/yongjip/Projects/potato-king/runs/panda_story/narration/captions.srt \
+  --burn-subtitles \
+  --subtitle-preset large \
+  --subtitle-layout auto \
+  --mute-clip-audio \
+  --overwrite
+```
+
 ## Positioning
 
 `Multiversal Pictures` is optimized for narration-led storybook videos.
@@ -106,5 +120,8 @@ multiversal-pictures stitch-run \
 - shots can render concurrently and then be stitched into one master video
 - stitched masters default to narration-first audio; clip audio can be added back only if needed
 - background music can be looped and automatically ducked under narration
-- subtitle sidecars can be exported from narration timing and embedded into the master MP4
+- subtitle sidecars can be exported from narration timing, embedded as soft tracks, or burned into frames
+- burned subtitles support presets: `storybook`, `large`, `minimal`, `high-contrast`
+- burned subtitle layouts support `widescreen`, `vertical`, and `auto`
+- burned subtitle presets auto-scale font size, outline, and bottom margin to the output resolution
 - this avoids unstable lip-sync and keeps children’s-story pacing under tighter control

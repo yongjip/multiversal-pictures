@@ -12,6 +12,7 @@ from .narration import build_narration_plan, render_narration_markdown
 from .openai_responses import OpenAIResponsesClient
 from .openai_speech import OpenAISpeechClient
 from .openai_videos import OpenAIAPIError, OpenAIVideosClient
+from .media import subtitle_layout_names, subtitle_preset_names
 from .rendering import render_shots
 from .shotlist import load_shotlist, resolve_shot_order
 from .stitching import stitch_run
@@ -145,8 +146,12 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--stitch-overwrite", action="store_true", help="Allow overwriting an existing stitched output.")
     render_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched output.")
     render_parser.add_argument("--background-music", help="Optional background music file to mix into the stitched output.")
-    render_parser.add_argument("--subtitle-file", help="Optional SRT or VTT subtitle file to embed into the stitched output.")
+    render_parser.add_argument("--subtitle-file", help="Optional SRT or VTT subtitle file to embed or burn into the stitched output.")
     render_parser.add_argument("--subtitle-language", default="eng", help="Subtitle language tag for the embedded subtitle track.")
+    render_parser.add_argument("--burn-subtitles", action="store_true", help="Burn subtitle text into video frames instead of embedding a subtitle track.")
+    render_parser.add_argument("--subtitle-preset", choices=subtitle_preset_names(), help="Preset style for burned subtitles.")
+    render_parser.add_argument("--subtitle-layout", choices=subtitle_layout_names(), help="Layout profile for burned subtitles.")
+    render_parser.add_argument("--subtitle-style", help="Optional ffmpeg ASS force_style overrides for burned subtitles.")
     render_parser.add_argument("--clip-audio-volume", type=float, help="Mix level for original clip audio when narration is present.")
     render_parser.add_argument("--narration-volume", type=float, help="Mix level for narration audio.")
     render_parser.add_argument("--music-volume", type=float, help="Mix level for background music.")
@@ -190,8 +195,12 @@ def build_parser() -> argparse.ArgumentParser:
     stitch_parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing output file.")
     stitch_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched video.")
     stitch_parser.add_argument("--background-music", help="Optional background music file to mix into the stitched video.")
-    stitch_parser.add_argument("--subtitle-file", help="Optional SRT or VTT subtitle file to embed into the stitched video.")
+    stitch_parser.add_argument("--subtitle-file", help="Optional SRT or VTT subtitle file to embed or burn into the stitched video.")
     stitch_parser.add_argument("--subtitle-language", default="eng", help="Subtitle language tag for the embedded subtitle track.")
+    stitch_parser.add_argument("--burn-subtitles", action="store_true", help="Burn subtitle text into video frames instead of embedding a subtitle track.")
+    stitch_parser.add_argument("--subtitle-preset", choices=subtitle_preset_names(), help="Preset style for burned subtitles.")
+    stitch_parser.add_argument("--subtitle-layout", choices=subtitle_layout_names(), help="Layout profile for burned subtitles.")
+    stitch_parser.add_argument("--subtitle-style", help="Optional ffmpeg ASS force_style overrides for burned subtitles.")
     stitch_parser.add_argument("--clip-audio-volume", type=float, help="Mix level for original clip audio when narration is present.")
     stitch_parser.add_argument("--narration-volume", type=float, help="Mix level for narration audio.")
     stitch_parser.add_argument("--music-volume", type=float, help="Mix level for background music.")
@@ -322,6 +331,10 @@ def cmd_render_shotlist(args: argparse.Namespace) -> int:
                 background_music_path=Path(args.background_music).resolve() if args.background_music else None,
                 subtitle_path=Path(args.subtitle_file).resolve() if args.subtitle_file else None,
                 subtitle_language=args.subtitle_language,
+                burn_subtitles=bool(args.burn_subtitles),
+                subtitle_preset=args.subtitle_preset,
+                subtitle_layout=args.subtitle_layout,
+                subtitle_style=args.subtitle_style,
                 clip_audio_volume=0.0 if args.mute_clip_audio else args.clip_audio_volume,
                 narration_volume=args.narration_volume,
                 music_volume=args.music_volume,
@@ -420,6 +433,10 @@ def cmd_stitch_run(args: argparse.Namespace) -> int:
         background_music_path=Path(args.background_music).resolve() if args.background_music else None,
         subtitle_path=Path(args.subtitle_file).resolve() if args.subtitle_file else None,
         subtitle_language=args.subtitle_language,
+        burn_subtitles=bool(args.burn_subtitles),
+        subtitle_preset=args.subtitle_preset,
+        subtitle_layout=args.subtitle_layout,
+        subtitle_style=args.subtitle_style,
         clip_audio_volume=0.0 if args.mute_clip_audio else args.clip_audio_volume,
         narration_volume=args.narration_volume,
         music_volume=args.music_volume,

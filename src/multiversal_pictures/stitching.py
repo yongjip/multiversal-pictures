@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .files import ensure_dir, read_json, write_json
-from .media import concat_video_clips, mix_storybook_audio, mux_subtitle_track
+from .media import burn_subtitle_track, concat_video_clips, mix_storybook_audio, mux_subtitle_track
 from .shotlist import load_shotlist, resolve_shot_order
 
 
@@ -22,6 +22,10 @@ def stitch_run(
     duck_music_under_narration: Optional[bool] = None,
     subtitle_path: Optional[Path] = None,
     subtitle_language: str = "eng",
+    burn_subtitles: bool = False,
+    subtitle_preset: Optional[str] = None,
+    subtitle_layout: Optional[str] = None,
+    subtitle_style: Optional[str] = None,
 ) -> Dict[str, Any]:
     run_manifest_path = run_dir / "run-manifest.json"
     shotlist_path = run_dir / "shotlist.json"
@@ -71,13 +75,24 @@ def stitch_run(
 
     subtitle_mode = None
     if needs_subtitle_mux and subtitle_path:
-        subtitle_mode = mux_subtitle_track(
-            video_path=staged_output_path,
-            subtitle_path=subtitle_path,
-            output_path=output_path,
-            overwrite=overwrite,
-            language=subtitle_language,
-        )
+        if burn_subtitles:
+            subtitle_mode = burn_subtitle_track(
+                video_path=staged_output_path,
+                subtitle_path=subtitle_path,
+                output_path=output_path,
+                overwrite=overwrite,
+                preset=subtitle_preset or os.getenv("STORYBOOK_SUBTITLE_PRESET", "storybook"),
+                layout=subtitle_layout or os.getenv("STORYBOOK_SUBTITLE_LAYOUT", "auto"),
+                style=subtitle_style,
+            )
+        else:
+            subtitle_mode = mux_subtitle_track(
+                video_path=staged_output_path,
+                subtitle_path=subtitle_path,
+                output_path=output_path,
+                overwrite=overwrite,
+                language=subtitle_language,
+            )
         if staged_output_path.exists() and staged_output_path != output_path:
             staged_output_path.unlink()
     elif not needs_audio_mix and temp_base_path != output_path and temp_base_path.exists():
@@ -97,6 +112,13 @@ def stitch_run(
     if subtitle_path:
         stitch_manifest["subtitle_path"] = str(subtitle_path)
         stitch_manifest["subtitle_language"] = subtitle_language
+        stitch_manifest["burn_subtitles"] = bool(burn_subtitles)
+        if subtitle_preset:
+            stitch_manifest["subtitle_preset"] = subtitle_preset
+        if subtitle_layout:
+            stitch_manifest["subtitle_layout"] = subtitle_layout
+        if subtitle_style:
+            stitch_manifest["subtitle_style"] = subtitle_style
         if subtitle_mode:
             stitch_manifest["subtitle_mode"] = subtitle_mode
     write_json(run_dir / "stitch-manifest.json", stitch_manifest)
