@@ -26,13 +26,20 @@ cp /Users/yongjip/Projects/potato-king/.env.example /Users/yongjip/Projects/pota
 
 Set `OPENAI_API_KEY` in `/Users/yongjip/Projects/potato-king/.env`.
 
+To upload to YouTube, also enable the YouTube Data API v3 in Google Cloud, create an OAuth desktop client, and point `YOUTUBE_CLIENT_SECRETS_FILE` at the downloaded JSON file. The CLI stores the reusable OAuth token in `YOUTUBE_TOKEN_FILE` or defaults to `~/.multiversal-pictures/youtube-token.json`.
+
 Recommended quality-first defaults:
 
 ```bash
 OPENAI_AGENT_MODEL=gpt-5.4
 OPENAI_AGENT_REASONING_EFFORT=medium
 OPENAI_VIDEO_MODEL=sora-2-pro
+OPENAI_IMAGE_MODEL=gpt-image-1.5
+OPENAI_IMAGE_QUALITY=high
 OPENAI_TTS_MODEL=tts-1-hd
+STORYBOOK_QA_MODEL=gpt-5.4
+STORYBOOK_QA_THRESHOLD=0.78
+STORYBOOK_QA_BEST_OF=3
 ```
 
 ## Agent Workflow
@@ -41,11 +48,14 @@ OPENAI_TTS_MODEL=tts-1-hd
 - `export-narration`: shotlist JSON -> narration script
 - `synthesize-narration`: shotlist JSON -> narration audio track
 - `export-subtitles`: shotlist or narration timing -> SRT/VTT/JSON subtitles
+- `generate-anchors`: shotlist JSON -> anchor images + derived shotlist with `input_reference`
 - `render-shotlist`: shotlist JSON -> rendered video clips
+- `review-shots`: render run -> scored candidates + selected winner
 - `produce`: prompt file or shotlist -> narration-led storybook master video
+- `upload-youtube`: stitched video or run directory -> YouTube upload manifest
 - `create-character`: reference video -> reusable character ID
 
-Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, `storybook-short-vertical`
+Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, `storybook-short-vertical`, `storybook-pro-landscape`, `storybook-pro-vertical`
 When a preset is selected, it overrides the project-level default `size`, `seconds`, framing guidance, and subtitle defaults.
 
 Architecture notes: `/Users/yongjip/Projects/potato-king/docs/agent-workflow.md:1`
@@ -67,10 +77,46 @@ multiversal-pictures produce \
 ```
 
 ```bash
+multiversal-pictures generate-anchors \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --output-dir /Users/yongjip/Projects/potato-king/runs/panda_story_vertical/anchors \
+  --output-shotlist /Users/yongjip/Projects/potato-king/runs/panda_story_vertical/anchored-shotlist.json
+```
+
+```bash
 multiversal-pictures produce \
   --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
   --output-preset storybook-vertical \
   --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical
+```
+
+```bash
+multiversal-pictures produce \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --output-preset storybook-pro-vertical \
+  --with-anchors \
+  --with-review \
+  --review-best-of 3 \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story_pro_vertical
+```
+
+```bash
+multiversal-pictures review-shots \
+  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story_pro_vertical \
+  --best-of 3 \
+  --threshold 0.78
+```
+
+```bash
+multiversal-pictures produce \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --output-preset storybook-vertical \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical \
+  --upload-youtube \
+  --youtube-title "Pobi Bamboo Breakfast" \
+  --youtube-description "A short storybook video made with Multiversal Pictures." \
+  --youtube-tags panda,storybook,kids \
+  --youtube-privacy-status private
 ```
 
 ```bash
@@ -140,6 +186,15 @@ multiversal-pictures stitch-run \
   --overwrite
 ```
 
+```bash
+multiversal-pictures upload-youtube \
+  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story_vertical \
+  --title "Pobi Bamboo Breakfast" \
+  --description "A short storybook video made with Multiversal Pictures." \
+  --tags panda,storybook,kids \
+  --privacy-status private
+```
+
 ## Positioning
 
 `Multiversal Pictures` is optimized for narration-led storybook videos.
@@ -155,4 +210,7 @@ multiversal-pictures stitch-run \
 - burned subtitle layouts support `widescreen`, `vertical`, and `auto`
 - burned subtitle presets auto-scale font size, outline, and bottom margin to the output resolution
 - output presets bundle render size, clip duration, framing guidance, and subtitle defaults for landscape vs 9:16 delivery
+- quality-first runs can create anchor frames first, feed them into Sora as `input_reference`, then review thumbnail/spritesheet assets before stitching
+- review manifests now keep `candidates[]`, `selected_candidate`, `review`, and `recommended_action` so stitching only uses the selected winner
+- final stitched videos can be uploaded to YouTube with stored OAuth credentials and a reusable upload manifest
 - this avoids unstable lip-sync and keeps children’s-story pacing under tighter control

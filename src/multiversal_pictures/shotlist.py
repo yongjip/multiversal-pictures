@@ -38,29 +38,39 @@ def build_shot_request(
 ) -> Dict[str, Any]:
     mode = str(shot.get("mode") or "generate").strip().lower()
     prompt = build_shot_prompt(project, shot)
-    payload: Dict[str, Any] = {
-        "prompt": prompt,
-        "model": str(shot.get("model") or project.get("model") or os.getenv("OPENAI_VIDEO_MODEL", "sora-2-pro")),
-        "size": str(shot.get("size") or project.get("size") or os.getenv("OPENAI_VIDEO_SIZE", "1280x720")),
-        "seconds": str(shot.get("seconds") or project.get("seconds") or os.getenv("OPENAI_VIDEO_SECONDS", "8")),
-    }
+    payload: Dict[str, Any] = {"prompt": prompt}
 
-    characters = shot.get("characters") or project.get("characters") or []
-    normalized_characters = _normalize_characters(characters)
-    if normalized_characters:
-        payload["characters"] = normalized_characters
+    if mode == "generate":
+        payload["model"] = str(shot.get("model") or project.get("model") or os.getenv("OPENAI_VIDEO_MODEL", "sora-2-pro"))
+        payload["size"] = str(shot.get("size") or project.get("size") or os.getenv("OPENAI_VIDEO_SIZE", "1280x720"))
+        payload["seconds"] = str(shot.get("seconds") or project.get("seconds") or os.getenv("OPENAI_VIDEO_SECONDS", "8"))
 
-    input_reference = shot.get("input_reference")
-    if input_reference:
-        payload["input_reference"] = _resolve_input_reference(input_reference, shotlist_dir)
+        characters = shot.get("characters") or project.get("characters") or []
+        normalized_characters = _normalize_characters(characters)
+        if normalized_characters:
+            payload["characters"] = normalized_characters
 
-    if mode in {"extend", "edit"}:
+        input_reference = shot.get("input_reference")
+        if input_reference:
+            payload["input_reference"] = _resolve_input_reference(input_reference, shotlist_dir)
+        return payload
+
+    if mode == "extend":
         source_video_id = _resolve_source_video_id(shot, known_videos)
         if not source_video_id:
             raise ValueError(f"{shot['id']} requires source_video_id or source_shot_id.")
         payload["video"] = {"id": source_video_id}
+        payload["seconds"] = str(shot.get("seconds") or project.get("seconds") or os.getenv("OPENAI_VIDEO_SECONDS", "8"))
+        return payload
 
-    return payload
+    if mode == "edit":
+        source_video_id = _resolve_source_video_id(shot, known_videos)
+        if not source_video_id:
+            raise ValueError(f"{shot['id']} requires source_video_id or source_shot_id.")
+        payload["video"] = {"id": source_video_id}
+        return payload
+
+    raise ValueError(f"Unsupported shot mode: {mode}")
 
 
 def _normalize_characters(value: Any) -> List[Dict[str, str]]:

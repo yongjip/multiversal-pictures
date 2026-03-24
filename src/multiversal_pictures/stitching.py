@@ -132,7 +132,13 @@ def _ordered_video_paths(ordered_ids: List[str], manifests_by_id: Dict[str, Dict
         manifest = manifests_by_id.get(shot_id)
         if not manifest or manifest.get("status") != "completed":
             continue
-        for download in manifest.get("downloads") or []:
+        selected_downloads = manifest.get("downloads") or []
+        if manifest.get("selected_candidate"):
+            for candidate in manifest.get("candidates") or []:
+                if str(candidate.get("candidate_id")) == str(manifest.get("selected_candidate")):
+                    selected_downloads = candidate.get("downloads") or selected_downloads
+                    break
+        for download in selected_downloads:
             if download.get("variant") == "video" and download.get("path"):
                 path = Path(str(download["path"]))
                 if path.exists():

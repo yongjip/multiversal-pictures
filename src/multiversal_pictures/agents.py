@@ -97,7 +97,7 @@ class StoryToShotlistAgent:
             video_model=config.video_model,
             size=config.size,
             seconds=config.seconds,
-            download_variants=["video", "thumbnail"],
+            download_variants=["video", "thumbnail", "spritesheet"],
             output_preset=config.output_preset,
             subtitle_preset=resolved_output_preset.get("subtitle_preset") if resolved_output_preset else None,
             subtitle_layout=resolved_output_preset.get("subtitle_layout") if resolved_output_preset else None,
@@ -161,9 +161,15 @@ class StoryToShotlistAgent:
             f"Use default video model {config.video_model}, size {config.size}, and seconds {config.seconds} unless a shot clearly needs an override. "
             "Valid download variants are video, thumbnail, and spritesheet. "
             f"Generate exactly {config.shot_count} shots unless the brief clearly requires one extra closing beat. "
+            "Preserve project.characters as full objects copied from the story brief. "
+            "Reference only those character IDs inside each shot.characters list. "
             "Include continuity notes in the project block and make sure each shot has strong shot_type, subject, action, setting, lighting, camera_motion, and mood fields. "
+            "For every shot include mode, seconds, size, priority, must_keep, negative_constraints, and characters. "
+            "Use mode=generate for a fresh clip, mode=extend only when the same scene should continue from a prior completed shot, and mode=edit only when one targeted corrective change is needed. "
+            "Shots in extend or edit mode must include source_shot_id or source_video_id and should not rely on characters or input_reference payload fields. "
+            "For generate shots, include start_frame and end_frame when they help lock the opening and closing beat, and include input_reference only when an image reference is genuinely useful. "
             "For every shot include a short narration_line, a narration_cue describing when the line lands, a narration_offset_ms integer, and sfx_notes for the sound mix. "
-            "Do not rely on visible talking or lip-synced dialogue."
+            "Do not rely on visible talking or lip-synced dialogue. Keep the lower center safe for optional subtitles."
         )
         if config.output_preset:
             preset = resolve_output_preset(config.output_preset)
@@ -286,11 +292,29 @@ def _shotlist_schema() -> Dict[str, Any]:
                     "narration_style": {"type": "string"},
                     "narration_notes": {"type": "string"},
                     "consistency_notes": {"type": "string"},
+                    "format_guidance": {"type": "string"},
                     "constraints": {
                         "type": "array",
                         "items": {"type": "string"},
                     },
                     "audio_notes": {"type": "string"},
+                    "characters": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "id": {"type": "string"},
+                                "name": {"type": "string"},
+                                "description": {"type": "string"},
+                                "continuity_rules": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            },
+                            "required": ["id", "name", "description", "continuity_rules"],
+                        },
+                    },
                 },
                 "required": [
                     "title",
@@ -302,8 +326,10 @@ def _shotlist_schema() -> Dict[str, Any]:
                     "narration_style",
                     "narration_notes",
                     "consistency_notes",
+                    "format_guidance",
                     "constraints",
                     "audio_notes",
+                    "characters",
                 ],
             },
             "shots": {
@@ -314,6 +340,16 @@ def _shotlist_schema() -> Dict[str, Any]:
                     "properties": {
                         "id": {"type": "string"},
                         "title": {"type": "string"},
+                        "mode": {
+                            "type": "string",
+                            "enum": ["generate", "extend", "edit"],
+                        },
+                        "seconds": {"type": "string"},
+                        "size": {"type": "string"},
+                        "priority": {
+                            "type": "string",
+                            "enum": ["low", "normal", "high"],
+                        },
                         "shot_type": {"type": "string"},
                         "subject": {"type": "string"},
                         "action": {"type": "string"},
@@ -321,10 +357,25 @@ def _shotlist_schema() -> Dict[str, Any]:
                         "lighting": {"type": "string"},
                         "camera_motion": {"type": "string"},
                         "mood": {"type": "string"},
+                        "style_notes": {"type": "string"},
+                        "format_guidance": {"type": "string"},
+                        "start_frame": {"type": "string"},
+                        "end_frame": {"type": "string"},
                         "narration_line": {"type": "string"},
                         "narration_cue": {"type": "string"},
                         "narration_offset_ms": {"type": "integer"},
                         "sfx_notes": {"type": "string"},
+                        "source_shot_id": {"type": "string"},
+                        "source_video_id": {"type": "string"},
+                        "input_reference": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "path": {"type": "string"},
+                                "image_url": {"type": "string"},
+                                "file_id": {"type": "string"},
+                            },
+                        },
                         "characters": {
                             "type": "array",
                             "items": {
@@ -332,6 +383,12 @@ def _shotlist_schema() -> Dict[str, Any]:
                                 "additionalProperties": False,
                                 "properties": {
                                     "id": {"type": "string"},
+                                    "name": {"type": "string"},
+                                    "description": {"type": "string"},
+                                    "continuity_rules": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                    },
                                 },
                                 "required": ["id"],
                             },
@@ -340,10 +397,22 @@ def _shotlist_schema() -> Dict[str, Any]:
                             "type": "array",
                             "items": {"type": "string"},
                         },
+                        "must_keep": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "negative_constraints": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
                     },
                     "required": [
                         "id",
                         "title",
+                        "mode",
+                        "seconds",
+                        "size",
+                        "priority",
                         "shot_type",
                         "subject",
                         "action",
@@ -353,9 +422,12 @@ def _shotlist_schema() -> Dict[str, Any]:
                         "mood",
                         "narration_line",
                         "narration_cue",
+                        "narration_offset_ms",
                         "sfx_notes",
                         "characters",
                         "constraints",
+                        "must_keep",
+                        "negative_constraints",
                     ],
                 },
             },

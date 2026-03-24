@@ -7,12 +7,15 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .agents import StoryAgentConfig, StoryToShotlistAgent, default_agent_model, default_agent_reasoning_effort
+from .anchors import generate_anchor_images
 from .files import ensure_dir, write_json
+from .openai_images import OpenAIImagesClient
 from .openai_responses import OpenAIResponsesClient
 from .openai_speech import OpenAISpeechClient
 from .openai_videos import OpenAIVideosClient
 from .output_presets import default_output_preset_name, preset_project_overrides, resolve_output_preset
 from .rendering import render_shots
+from .review import review_rendered_shots
 from .shotlist import load_shotlist, resolve_shot_order
 from .stitching import stitch_run
 from .tts import synthesize_narration
@@ -45,6 +48,13 @@ class StorybookProductionConfig:
     narration_voice: Optional[str] = None
     narration_response_format: Optional[str] = None
     default_offset_ms: int = 500
+    with_anchors: bool = False
+    image_model: Optional[str] = None
+    image_quality: Optional[str] = None
+    with_review: bool = False
+    review_model: Optional[str] = None
+    review_threshold: Optional[float] = None
+    review_best_of: Optional[int] = None
     subtitle_file: Optional[Path] = None
     subtitle_language: str = "eng"
     burn_subtitles: bool = False
@@ -78,15 +88,33 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
         resolved_output_preset=resolved_output_preset,
     )
 
-    video_client = _video_client_from_env(config.timeout_seconds)
-    speech_client = _speech_client_from_env()
-
     shotlist = load_shotlist(source_shotlist_path)
     project = dict(shotlist.get("project") or {})
     if resolved_output_preset:
         project = preset_project_overrides(project=project, preset=resolved_output_preset)
         shotlist["project"] = project
         write_json(source_shotlist_path, shotlist)
+
+    effective_shotlist_path = source_shotlist_path
+    anchor_manifest: Optional[Dict[str, Any]] = None
+    if config.with_anchors:
+        image_client = _image_client_from_env()
+        anchor_output_dir = run_dir / "anchors"
+        anchored_shotlist_path = run_dir / "anchored-shotlist.json"
+        anchor_manifest = generate_anchor_images(
+            shotlist_path=source_shotlist_path,
+            output_dir=anchor_output_dir,
+            output_shotlist_path=anchored_shotlist_path,
+            client=image_client,
+            model=config.image_model or os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1.5"),
+            quality=config.image_quality or os.getenv("OPENAI_IMAGE_QUALITY", "high"),
+        )
+        effective_shotlist_path = anchored_shotlist_path
+        shotlist = load_shotlist(effective_shotlist_path)
+        project = dict(shotlist.get("project") or {})
+
+    video_client = _video_client_from_env(config.timeout_seconds)
+    speech_client = _speech_client_from_env()
     ordered_shots = resolve_shot_order(shotlist["shots"])
 
     poll_interval = config.poll_interval or int(project.get("poll_interval_seconds") or os.getenv("OPENAI_POLL_INTERVAL_SECONDS", "10"))
@@ -100,7 +128,7 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
     with ThreadPoolExecutor(max_workers=2) as executor:
         render_future = executor.submit(
             render_shots,
-            shotlist_path=source_shotlist_path,
+            shotlist_path=effective_shotlist_path,
             project=project,
             ordered_shots=ordered_shots,
             output_dir=run_dir,
@@ -115,7 +143,7 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
         )
         narration_future = executor.submit(
             synthesize_narration,
-            shotlist_path=source_shotlist_path,
+            shotlist_path=effective_shotlist_path,
             output_dir=run_dir / "narration",
             client=speech_client,
             model=narration_model,
@@ -140,6 +168,21 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
 
         if errors:
             raise errors[0]
+
+    review_manifest: Optional[Dict[str, Any]] = None
+    if config.with_review:
+        response_client = _responses_client_from_env()
+        review_manifest = review_rendered_shots(
+            run_dir=run_dir,
+            response_client=response_client,
+            video_client=video_client,
+            model=config.review_model or os.getenv("STORYBOOK_QA_MODEL", default_agent_model()),
+            threshold=float(config.review_threshold if config.review_threshold is not None else os.getenv("STORYBOOK_QA_THRESHOLD", "0.78")),
+            best_of=int(config.review_best_of if config.review_best_of is not None else os.getenv("STORYBOOK_QA_BEST_OF", "3")),
+            poll_interval=poll_interval,
+            timeout_seconds=timeout_seconds,
+            reasoning_effort=config.reasoning_effort or default_agent_reasoning_effort(),
+        )
 
     subtitle_path = config.subtitle_file.expanduser().resolve() if config.subtitle_file else Path(narration_manifest["subtitle_paths"]["srt"])
     stitch_manifest = stitch_run(
@@ -169,8 +212,10 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
         "shotlist_source": shotlist_source,
         "brief_output_path": str(brief_output_path) if brief_output_path.exists() else None,
         "trace_output_path": str(trace_output_path) if trace_output_path.exists() else None,
+        "anchor_manifest": anchor_manifest,
         "render_manifest": render_manifest,
         "narration_manifest": narration_manifest,
+        "review_manifest": review_manifest,
         "stitch_manifest": stitch_manifest,
     }
     write_json(run_dir / "production-manifest.json", production_manifest)
@@ -246,6 +291,15 @@ def _responses_client_from_env() -> OpenAIResponsesClient:
     base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     timeout = int(os.getenv("OPENAI_AGENT_TIMEOUT_SECONDS", "600"))
     return OpenAIResponsesClient(api_key=api_key, base_url=base_url, timeout=timeout)
+
+
+def _image_client_from_env() -> OpenAIImagesClient:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is missing.")
+    base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    timeout = int(os.getenv("OPENAI_AGENT_TIMEOUT_SECONDS", "600"))
+    return OpenAIImagesClient(api_key=api_key, base_url=base_url, timeout=timeout)
 
 
 def _speech_client_from_env() -> OpenAISpeechClient:

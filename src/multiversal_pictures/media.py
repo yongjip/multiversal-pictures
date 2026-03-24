@@ -70,6 +70,56 @@ def probe_media(path: Path, *, ffmpeg: Optional[str] = None) -> MediaInfo:
     )
 
 
+def parse_media_size(value: str) -> Tuple[int, int]:
+    cleaned = str(value).strip().lower()
+    if "x" not in cleaned:
+        raise ValueError(f"Unsupported media size '{value}'. Expected WIDTHxHEIGHT.")
+    width_text, height_text = cleaned.split("x", 1)
+    width = int(width_text)
+    height = int(height_text)
+    if width <= 0 or height <= 0:
+        raise ValueError(f"Unsupported media size '{value}'. Width and height must be positive.")
+    return width, height
+
+
+def normalize_image_to_size(
+    *,
+    input_path: Path,
+    output_path: Path,
+    size: str,
+    overwrite: bool = True,
+    fit: str = "cover",
+) -> None:
+    width, height = parse_media_size(size)
+    fit_mode = fit.strip().lower()
+    if fit_mode == "cover":
+        filter_chain = (
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height}"
+        )
+    elif fit_mode == "contain":
+        filter_chain = (
+            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black"
+        )
+    else:
+        raise ValueError(f"Unsupported image fit mode '{fit}'. Expected cover or contain.")
+
+    ffmpeg = ffmpeg_executable()
+    command = [
+        ffmpeg,
+        "-y" if overwrite else "-n",
+        "-i",
+        str(input_path),
+        "-vf",
+        filter_chain,
+        "-frames:v",
+        "1",
+        str(output_path),
+    ]
+    _run_ffmpeg(command, error_prefix="Image normalization failed")
+
+
 def concat_video_clips(
     *,
     video_paths: List[Path],

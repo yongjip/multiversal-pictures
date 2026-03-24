@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from .agents import StoryAgentConfig, StoryToShotlistAgent, default_agent_model, default_agent_reasoning_effort
+from .anchors import generate_anchor_images
 from .dotenv import load_dotenv
-from .files import ensure_dir, write_bytes, write_json
+from .files import ensure_dir, read_json, write_bytes, write_json
+from .openai_images import OpenAIImagesClient
 from .narration import build_narration_plan, render_narration_markdown
 from .openai_responses import OpenAIResponsesClient
 from .openai_speech import OpenAISpeechClient
@@ -16,10 +18,12 @@ from .media import subtitle_layout_names, subtitle_preset_names
 from .output_presets import default_output_preset_name, output_preset_names, preset_project_overrides, resolve_output_preset
 from .production import StorybookProductionConfig, run_storybook_production
 from .rendering import render_shots
+from .review import review_rendered_shots
 from .shotlist import load_shotlist, resolve_shot_order
 from .stitching import stitch_run
 from .subtitles import export_subtitles
 from .tts import synthesize_narration
+from .youtube import YouTubeUploadConfig, upload_youtube_video
 
 
 SAMPLE_SHOTLIST = {
@@ -30,8 +34,9 @@ SAMPLE_SHOTLIST = {
         "size": "1280x720",
         "seconds": "8",
         "poll_interval_seconds": 10,
-        "download_variants": ["video", "thumbnail"],
+        "download_variants": ["video", "thumbnail", "spritesheet"],
         "style_notes": "polished storybook animation, gentle cinematic motion, soft textures, clear focal composition",
+        "format_guidance": "Keep the lower-center area visually clean for optional subtitles. Hold a strong hero composition that reads clearly in the first frame.",
         "narration_style": "warm, calm bedtime-story narrator",
         "narration_notes": "Keep each line short and clear enough to sit comfortably over the shot. Let narration carry the story so visuals stay expressive and simple.",
         "consistency_notes": "Pobi is a small round panda cub with soft black-and-white fur, bright curious eyes, and a tiny green scarf. Keep his face shape, body proportions, and scarf consistent across all shots.",
@@ -41,12 +46,37 @@ SAMPLE_SHOTLIST = {
             "clean anatomy and natural motion",
             "no scary imagery or aggressive action"
         ],
-        "audio_notes": "Gentle bamboo forest ambience and soft birdsong under external narration."
+        "audio_notes": "Gentle bamboo forest ambience and soft birdsong under external narration.",
+        "characters": [
+            {
+                "id": "pobi",
+                "name": "Pobi",
+                "description": "a small round panda cub with soft black-and-white fur, bright curious eyes, and a tiny green scarf",
+                "continuity_rules": [
+                    "keep Pobi's face shape and body proportions consistent",
+                    "keep the small green scarf in every shot",
+                    "preserve child-friendly expression and gentle demeanor"
+                ]
+            },
+            {
+                "id": "timi",
+                "name": "Timi",
+                "description": "a tiny red bird with a round body, bright eyes, and tidy smooth feathers",
+                "continuity_rules": [
+                    "keep the red bird compact and friendly, never realistic or threatening",
+                    "preserve the bright red plumage and tiny beak"
+                ]
+            }
+        ]
     },
     "shots": [
         {
             "id": "shot-01-morning",
             "title": "Pobi wakes up",
+            "mode": "generate",
+            "seconds": "8",
+            "size": "1280x720",
+            "priority": "high",
             "shot_type": "Wide storybook shot",
             "subject": "Pobi, a small round panda cub",
             "action": "wakes up in a bamboo bed, stretches his paws, and smiles sleepily",
@@ -54,6 +84,11 @@ SAMPLE_SHOTLIST = {
             "lighting": "soft golden sunrise light through paper windows",
             "camera_motion": "slow push-in",
             "mood": "warm, calm, child-friendly",
+            "characters": ["pobi"],
+            "start_frame": "Pobi curled asleep in a bamboo bed, green scarf visible beside his cheek, sunrise entering through paper windows.",
+            "end_frame": "Pobi finishes stretching and looks toward the bright morning window with a gentle smile.",
+            "must_keep": ["Pobi's green scarf", "cozy bamboo textures", "clear center framing on Pobi"],
+            "negative_constraints": ["no extra characters", "no modern objects", "no messy clutter"],
             "narration_line": "On a soft green mountain, little Pobi opened his eyes to a brand-new morning.",
             "narration_cue": "start softly after the first half-second",
             "narration_offset_ms": 500,
@@ -62,6 +97,10 @@ SAMPLE_SHOTLIST = {
         {
             "id": "shot-02-walk",
             "title": "Pobi walks to breakfast",
+            "mode": "generate",
+            "seconds": "8",
+            "size": "1280x720",
+            "priority": "normal",
             "shot_type": "Medium tracking shot",
             "subject": "Pobi, the same panda cub",
             "action": "waddles happily along a forest path toward a bamboo grove",
@@ -69,6 +108,11 @@ SAMPLE_SHOTLIST = {
             "lighting": "fresh morning light with soft haze",
             "camera_motion": "gentle side-tracking move",
             "mood": "playful and peaceful",
+            "characters": ["pobi"],
+            "start_frame": "Pobi steps out onto the forest path with the scarf bouncing lightly.",
+            "end_frame": "Pobi reaches the edge of the bright bamboo grove and looks delighted.",
+            "must_keep": ["same panda proportions and scarf", "morning mist", "clear path direction"],
+            "negative_constraints": ["no crowding foliage over Pobi's face", "no sudden camera shake"],
             "narration_line": "His tummy gave a tiny rumble, so he set off to find the freshest bamboo in the forest.",
             "narration_cue": "land the second clause as he reaches the grove",
             "narration_offset_ms": 350,
@@ -77,6 +121,10 @@ SAMPLE_SHOTLIST = {
         {
             "id": "shot-03-bamboo",
             "title": "Crunchy bamboo breakfast",
+            "mode": "generate",
+            "seconds": "8",
+            "size": "1280x720",
+            "priority": "high",
             "shot_type": "Close-up storybook shot",
             "subject": "Pobi, the same panda cub",
             "action": "takes a big crunchy bite of fresh bamboo and smiles with delight",
@@ -84,6 +132,11 @@ SAMPLE_SHOTLIST = {
             "lighting": "clean daylight with soft highlights on the leaves",
             "camera_motion": "subtle handheld-like drift",
             "mood": "cozy and joyful",
+            "characters": ["pobi"],
+            "start_frame": "Pobi raises a fresh bamboo stalk near his mouth, eyes bright and focused.",
+            "end_frame": "Pobi smiles after the bite with crisp leaf texture and a joyful expression.",
+            "must_keep": ["clean close-up on Pobi", "visible bamboo stalk", "gentle storybook styling"],
+            "negative_constraints": ["no distorted teeth", "no messy mouth details", "no duplicate bamboo stalks"],
             "narration_line": "Crunch, crunch, crunch. Pobi's breakfast was cool, sweet, and delicious.",
             "narration_cue": "let the first crunch happen before the narration starts",
             "narration_offset_ms": 900,
@@ -92,6 +145,10 @@ SAMPLE_SHOTLIST = {
         {
             "id": "shot-04-sharing",
             "title": "Sharing with friends",
+            "mode": "generate",
+            "seconds": "8",
+            "size": "1280x720",
+            "priority": "normal",
             "shot_type": "Wide ensemble shot",
             "subject": "Pobi, the same panda cub, with a tiny red bird, a rabbit, and a shy deer",
             "action": "shares berries, apples, and tender leaves with the forest friends",
@@ -99,6 +156,11 @@ SAMPLE_SHOTLIST = {
             "lighting": "warm morning sunlight with soft sparkles through the trees",
             "camera_motion": "slow circular move around the group",
             "mood": "kind, gentle, celebratory",
+            "characters": ["pobi", "timi"],
+            "start_frame": "Pobi places fruit on a leaf table while the tiny red bird lands nearby and the other friends gather.",
+            "end_frame": "The group settles into a warm shared breakfast tableau with Pobi centered.",
+            "must_keep": ["Pobi centered in the group", "tiny red bird readable in frame", "sunny clearing mood"],
+            "negative_constraints": ["no aggressive animal behavior", "no photorealistic deer", "no clutter over the subtitle safe area"],
             "narration_line": "Soon everyone was smiling in the sunshine, because breakfast always tastes better when it is shared.",
             "narration_cue": "deliver the final clause as the camera opens to the group",
             "narration_offset_ms": 400,
@@ -163,6 +225,28 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--mute-clip-audio", action="store_true", help="Mute original clip audio when mixing narration.")
     render_parser.add_argument("--no-music-ducking", action="store_true", help="Do not duck background music under narration.")
 
+    anchor_parser = subparsers.add_parser("generate-anchors", help="Generate anchor images and write a derived shot list with input_reference paths.")
+    anchor_parser.add_argument("--shotlist", required=True, help="Shot list JSON path.")
+    anchor_parser.add_argument("--output-dir", required=True, help="Output directory for raw and normalized anchor assets.")
+    anchor_parser.add_argument("--output-shotlist", help="Optional path for the derived shot list. Defaults to <output-dir>/anchored-shotlist.json.")
+    anchor_parser.add_argument("--model", help="Override image model.")
+    anchor_parser.add_argument("--quality", help="Override image quality.")
+    anchor_parser.add_argument(
+        "--replace-existing-input-reference",
+        action="store_true",
+        help="Regenerate anchor images even when a shot already has input_reference configured.",
+    )
+
+    review_parser = subparsers.add_parser("review-shots", help="Review rendered shots, score candidates, and optionally create extra best-of candidates.")
+    review_parser.add_argument("--run-dir", required=True, help="Render run directory containing run-manifest.json and shotlist.json.")
+    review_parser.add_argument("--only", help="Comma-separated shot IDs to review.")
+    review_parser.add_argument("--model", help="Override the review model.")
+    review_parser.add_argument("--threshold", type=float, help="Minimum overall score required to auto-keep the selected candidate.")
+    review_parser.add_argument("--best-of", type=int, help="Maximum candidate count per eligible shot.")
+    review_parser.add_argument("--poll-interval", type=int, help="Polling interval seconds for extra candidate renders.")
+    review_parser.add_argument("--timeout-seconds", type=int, help="Maximum wait time per extra candidate render.")
+    review_parser.add_argument("--reasoning-effort", choices=["minimal", "low", "medium", "high"], help="Override reasoning effort for the review model.")
+
     produce_parser = subparsers.add_parser("produce", help="Run the storybook pipeline end-to-end and overlap narration with rendering.")
     produce_input = produce_parser.add_mutually_exclusive_group(required=True)
     produce_input.add_argument("--shotlist", help="Existing shot list JSON path.")
@@ -182,6 +266,13 @@ def build_parser() -> argparse.ArgumentParser:
     produce_parser.add_argument("--size", help="Default output size to write into the shot list when generating from a prompt.")
     produce_parser.add_argument("--seconds", help="Default clip length to write into the shot list when generating from a prompt.")
     produce_parser.add_argument("--download-variants", help="Override variants, e.g. video,thumbnail.")
+    produce_parser.add_argument("--with-anchors", action="store_true", help="Generate GPT Image anchor frames and inject them as input_reference before rendering.")
+    produce_parser.add_argument("--image-model", help="Override image model for anchor generation.")
+    produce_parser.add_argument("--image-quality", help="Override image quality for anchor generation.")
+    produce_parser.add_argument("--with-review", action="store_true", help="Run the review loop after rendering and auto-select the best candidate.")
+    produce_parser.add_argument("--review-model", help="Override review model.")
+    produce_parser.add_argument("--review-threshold", type=float, help="Minimum review score required to auto-keep a shot.")
+    produce_parser.add_argument("--review-best-of", type=int, help="Maximum candidate count per eligible shot during review.")
     produce_parser.add_argument("--skip-existing", action="store_true", help="Skip shots with an existing completed manifest in the output run directory.")
     produce_parser.add_argument("--jobs", type=int, default=1, help="Number of shots to render concurrently.")
     produce_parser.add_argument("--poll-interval", type=int, help="Polling interval seconds.")
@@ -203,6 +294,8 @@ def build_parser() -> argparse.ArgumentParser:
     produce_parser.add_argument("--mute-clip-audio", action="store_true", help="Mute original clip audio when mixing narration.")
     produce_parser.add_argument("--no-music-ducking", action="store_true", help="Do not duck background music under narration.")
     produce_parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing final stitched output.")
+    produce_parser.add_argument("--upload-youtube", action="store_true", help="Upload the final stitched video to YouTube after production completes.")
+    _add_youtube_upload_arguments(produce_parser, option_prefix="youtube-", dest_prefix="youtube_", include_video_source=False)
 
     character_parser = subparsers.add_parser("create-character", help="Create a reusable character from a reference video.")
     character_parser.add_argument("--video", required=True, help="Absolute or relative path to a reference video file.")
@@ -254,6 +347,9 @@ def build_parser() -> argparse.ArgumentParser:
     stitch_parser.add_argument("--mute-clip-audio", action="store_true", help="Mute original clip audio when mixing narration.")
     stitch_parser.add_argument("--no-music-ducking", action="store_true", help="Do not duck background music under narration.")
 
+    youtube_parser = subparsers.add_parser("upload-youtube", help="Upload a completed video to YouTube using OAuth 2.0.")
+    _add_youtube_upload_arguments(youtube_parser)
+
     return parser
 
 
@@ -271,6 +367,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             return cmd_generate_shotlist(args)
         if args.command == "render-shotlist":
             return cmd_render_shotlist(args)
+        if args.command == "generate-anchors":
+            return cmd_generate_anchors(args)
+        if args.command == "review-shots":
+            return cmd_review_shots(args)
         if args.command == "produce":
             return cmd_produce(args)
         if args.command == "create-character":
@@ -285,6 +385,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return cmd_export_subtitles(args)
         if args.command == "stitch-run":
             return cmd_stitch_run(args)
+        if args.command == "upload-youtube":
+            return cmd_upload_youtube(args)
     except (OpenAIAPIError, TimeoutError, ValueError, FileNotFoundError) as error:
         print(f"Error: {error}")
         return 1
@@ -399,6 +501,53 @@ def cmd_render_shotlist(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_generate_anchors(args: argparse.Namespace) -> int:
+    shotlist_path = Path(args.shotlist).resolve()
+    output_dir = Path(args.output_dir).resolve()
+    output_shotlist_path = Path(args.output_shotlist).resolve() if args.output_shotlist else output_dir / "anchored-shotlist.json"
+    manifest = generate_anchor_images(
+        shotlist_path=shotlist_path,
+        output_dir=output_dir,
+        output_shotlist_path=output_shotlist_path,
+        client=_image_client_from_env(),
+        model=args.model or os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1.5"),
+        quality=args.quality or os.getenv("OPENAI_IMAGE_QUALITY", "high"),
+        replace_existing_input_reference=bool(args.replace_existing_input_reference),
+    )
+    print(f"Wrote anchor manifest: {output_dir / 'anchors-manifest.json'}")
+    print(f"Wrote anchored shot list: {output_shotlist_path}")
+    print(f"Processed shots: {len(manifest.get('shots') or [])}")
+    return 0
+
+
+def cmd_review_shots(args: argparse.Namespace) -> int:
+    run_dir = Path(args.run_dir).resolve()
+    threshold = float(args.threshold if args.threshold is not None else os.getenv("STORYBOOK_QA_THRESHOLD", "0.78"))
+    best_of = int(args.best_of if args.best_of is not None else os.getenv("STORYBOOK_QA_BEST_OF", "3"))
+    poll_interval = int(args.poll_interval if args.poll_interval is not None else os.getenv("OPENAI_POLL_INTERVAL_SECONDS", "10"))
+    timeout_seconds = int(args.timeout_seconds if args.timeout_seconds is not None else os.getenv("OPENAI_VIDEO_TIMEOUT_SECONDS", "1800"))
+    manifest = review_rendered_shots(
+        run_dir=run_dir,
+        response_client=_responses_client_from_env(),
+        video_client=_client_from_env(timeout_seconds),
+        model=args.model or os.getenv("STORYBOOK_QA_MODEL", default_agent_model()),
+        threshold=threshold,
+        best_of=best_of,
+        poll_interval=poll_interval,
+        timeout_seconds=timeout_seconds,
+        selected_ids=_selected_ids(args.only),
+        reasoning_effort=args.reasoning_effort or default_agent_reasoning_effort(),
+    )
+    reviewed_shots = manifest.get("shots") or []
+    kept = sum(1 for item in reviewed_shots if item.get("recommended_action") == "keep")
+    edited = sum(1 for item in reviewed_shots if item.get("recommended_action") == "edit")
+    rerender = sum(1 for item in reviewed_shots if item.get("recommended_action") == "rerender")
+    print(f"Wrote review manifest: {run_dir / 'review-manifest.json'}")
+    print(f"Reviewed shots: {len(reviewed_shots)}")
+    print(f"Keep: {kept} | Edit: {edited} | Rerender: {rerender}")
+    return 0
+
+
 def cmd_produce(args: argparse.Namespace) -> int:
     run_dir = Path(args.output).resolve()
     final_output_path = Path(args.final_output).resolve() if args.final_output else run_dir / "story.mp4"
@@ -423,6 +572,13 @@ def cmd_produce(args: argparse.Namespace) -> int:
             seconds=args.seconds,
             jobs=max(1, int(args.jobs or 1)),
             download_variants=args.download_variants,
+            with_anchors=bool(args.with_anchors),
+            image_model=args.image_model,
+            image_quality=args.image_quality,
+            with_review=bool(args.with_review),
+            review_model=args.review_model,
+            review_threshold=args.review_threshold,
+            review_best_of=args.review_best_of,
             skip_existing=bool(args.skip_existing),
             poll_interval=args.poll_interval,
             timeout_seconds=args.timeout_seconds,
@@ -449,7 +605,29 @@ def cmd_produce(args: argparse.Namespace) -> int:
     print(f"Wrote shot list: {manifest['shotlist_path']}")
     print(f"Wrote narration audio: {manifest['narration_manifest']['master_audio_path']}")
     print(f"Wrote run manifest: {run_dir / 'run-manifest.json'}")
+    if manifest.get("anchor_manifest"):
+        print(f"Wrote anchor manifest: {run_dir / 'anchors' / 'anchors-manifest.json'}")
+    if manifest.get("review_manifest"):
+        print(f"Wrote review manifest: {run_dir / 'review-manifest.json'}")
     print(f"Wrote stitched video: {manifest['output_path']}")
+    if args.upload_youtube:
+        upload_manifest_path, upload_manifest = _run_youtube_upload(
+            video_path=Path(manifest["output_path"]).resolve(),
+            shotlist_path=Path(manifest["shotlist_path"]).resolve() if manifest.get("shotlist_path") else None,
+            title=args.youtube_title,
+            description=args.youtube_description,
+            description_file=args.youtube_description_file,
+            tags=args.youtube_tags,
+            category_id=args.youtube_category_id,
+            privacy_status=args.youtube_privacy_status,
+            client_secrets=args.youtube_client_secrets,
+            token_file=args.youtube_token_file,
+            manifest_output=args.youtube_manifest_output,
+            no_browser=bool(args.youtube_no_browser),
+            default_manifest_output=run_dir / "youtube-upload.json",
+        )
+        print(f"Wrote YouTube upload manifest: {upload_manifest_path}")
+        print(f"YouTube video URL: {upload_manifest['video_url']}")
     return 0
 
 
@@ -556,6 +734,32 @@ def cmd_stitch_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_upload_youtube(args: argparse.Namespace) -> int:
+    video_path, shotlist_path, run_dir = _resolve_youtube_video_source(
+        video=args.video,
+        run_dir=args.run_dir,
+    )
+    default_manifest_output = (run_dir / "youtube-upload.json") if run_dir else video_path.with_suffix(".youtube-upload.json")
+    upload_manifest_path, upload_manifest = _run_youtube_upload(
+        video_path=video_path,
+        shotlist_path=shotlist_path,
+        title=args.title,
+        description=args.description,
+        description_file=args.description_file,
+        tags=args.tags,
+        category_id=args.category_id,
+        privacy_status=args.privacy_status,
+        client_secrets=args.client_secrets,
+        token_file=args.token_file,
+        manifest_output=args.manifest_output,
+        no_browser=bool(args.no_browser),
+        default_manifest_output=default_manifest_output,
+    )
+    print(f"Wrote YouTube upload manifest: {upload_manifest_path}")
+    print(f"YouTube video URL: {upload_manifest['video_url']}")
+    return 0
+
+
 def _client_from_env(timeout_override: Optional[int]) -> OpenAIVideosClient:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -572,6 +776,15 @@ def _responses_client_from_env() -> OpenAIResponsesClient:
     base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     timeout = int(os.getenv("OPENAI_AGENT_TIMEOUT_SECONDS", "600"))
     return OpenAIResponsesClient(api_key=api_key, base_url=base_url, timeout=timeout)
+
+
+def _image_client_from_env() -> OpenAIImagesClient:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is missing.")
+    base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    timeout = int(os.getenv("OPENAI_AGENT_TIMEOUT_SECONDS", "600"))
+    return OpenAIImagesClient(api_key=api_key, base_url=base_url, timeout=timeout)
 
 
 def _speech_client_from_env() -> OpenAISpeechClient:
@@ -595,3 +808,185 @@ def _selected_ids(value: Optional[str]) -> Set[str]:
     if not value:
         return set()
     return {item.strip() for item in value.split(",") if item.strip()}
+
+
+def _add_youtube_upload_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    option_prefix: str = "",
+    dest_prefix: str = "",
+    include_video_source: bool = True,
+) -> None:
+    if include_video_source:
+        source_group = parser.add_mutually_exclusive_group(required=True)
+        source_group.add_argument(
+            f"--{option_prefix}video",
+            dest=f"{dest_prefix}video",
+            help="Video file path to upload.",
+        )
+        source_group.add_argument(
+            f"--{option_prefix}run-dir",
+            dest=f"{dest_prefix}run_dir",
+            help="Run directory containing production-manifest.json, stitch-manifest.json, or story.mp4.",
+        )
+
+    parser.add_argument(f"--{option_prefix}title", dest=f"{dest_prefix}title", help="YouTube video title. Defaults to the project title or file stem.")
+    parser.add_argument(f"--{option_prefix}description", dest=f"{dest_prefix}description", help="YouTube video description.")
+    parser.add_argument(f"--{option_prefix}description-file", dest=f"{dest_prefix}description_file", help="Path to a text file containing the YouTube description.")
+    parser.add_argument(f"--{option_prefix}tags", dest=f"{dest_prefix}tags", help="Comma-separated YouTube tags.")
+    parser.add_argument(f"--{option_prefix}category-id", dest=f"{dest_prefix}category_id", help="YouTube category ID. Defaults to 22 (People & Blogs).")
+    parser.add_argument(
+        f"--{option_prefix}privacy-status",
+        dest=f"{dest_prefix}privacy_status",
+        choices=["public", "private", "unlisted"],
+        help="YouTube visibility for the uploaded video.",
+    )
+    parser.add_argument(
+        f"--{option_prefix}client-secrets",
+        dest=f"{dest_prefix}client_secrets",
+        help="OAuth desktop client JSON downloaded from Google Cloud.",
+    )
+    parser.add_argument(
+        f"--{option_prefix}token-file",
+        dest=f"{dest_prefix}token_file",
+        help="Path to store the YouTube OAuth token JSON.",
+    )
+    parser.add_argument(
+        f"--{option_prefix}manifest-output",
+        dest=f"{dest_prefix}manifest_output",
+        help="Optional path to write the YouTube upload manifest JSON.",
+    )
+    parser.add_argument(
+        f"--{option_prefix}no-browser",
+        dest=f"{dest_prefix}no_browser",
+        action="store_true",
+        help="Print the OAuth consent URL instead of opening a browser automatically.",
+    )
+
+
+def _run_youtube_upload(
+    *,
+    video_path: Path,
+    shotlist_path: Optional[Path],
+    title: Optional[str],
+    description: Optional[str],
+    description_file: Optional[str],
+    tags: Optional[str],
+    category_id: Optional[str],
+    privacy_status: Optional[str],
+    client_secrets: Optional[str],
+    token_file: Optional[str],
+    manifest_output: Optional[str],
+    no_browser: bool,
+    default_manifest_output: Path,
+) -> tuple[Path, Dict[str, Any]]:
+    resolved_video_path = video_path.expanduser().resolve()
+    resolved_shotlist_path = shotlist_path.expanduser().resolve() if shotlist_path else None
+    resolved_title = _resolve_youtube_title(title=title, video_path=resolved_video_path, shotlist_path=resolved_shotlist_path)
+    resolved_description = _read_optional_text(value=description, file_path=description_file)
+    resolved_tags = _parse_csv(tags)
+    resolved_category_id = (category_id or os.getenv("YOUTUBE_CATEGORY_ID") or "22").strip()
+    resolved_privacy_status = (privacy_status or os.getenv("YOUTUBE_PRIVACY_STATUS") or "private").strip().lower()
+    client_secrets_value = client_secrets or os.getenv("YOUTUBE_CLIENT_SECRETS_FILE")
+    if not client_secrets_value:
+        raise ValueError("YouTube upload requires --client-secrets or YOUTUBE_CLIENT_SECRETS_FILE.")
+
+    token_path = Path(
+        token_file or os.getenv("YOUTUBE_TOKEN_FILE") or (Path.home() / ".multiversal-pictures" / "youtube-token.json")
+    ).expanduser()
+    upload_manifest = upload_youtube_video(
+        YouTubeUploadConfig(
+            video_path=resolved_video_path,
+            client_secrets_path=Path(client_secrets_value).expanduser(),
+            token_path=token_path,
+            title=resolved_title,
+            description=resolved_description,
+            tags=resolved_tags,
+            category_id=resolved_category_id,
+            privacy_status=resolved_privacy_status,
+            open_browser=not no_browser,
+        )
+    )
+    manifest_path = Path(manifest_output).expanduser().resolve() if manifest_output else default_manifest_output.expanduser().resolve()
+    write_json(manifest_path, upload_manifest)
+    return manifest_path, upload_manifest
+
+
+def _resolve_youtube_video_source(*, video: Optional[str], run_dir: Optional[str]) -> tuple[Path, Optional[Path], Optional[Path]]:
+    if video:
+        resolved_video_path = Path(video).expanduser().resolve()
+        if not resolved_video_path.exists():
+            raise FileNotFoundError(resolved_video_path)
+        return resolved_video_path, None, None
+
+    if not run_dir:
+        raise ValueError("Either --video or --run-dir is required.")
+
+    resolved_run_dir = Path(run_dir).expanduser().resolve()
+    if not resolved_run_dir.exists():
+        raise FileNotFoundError(resolved_run_dir)
+
+    production_manifest_path = resolved_run_dir / "production-manifest.json"
+    if production_manifest_path.exists():
+        production_manifest = read_json(production_manifest_path)
+        output_path = Path(str(production_manifest.get("output_path") or resolved_run_dir / "story.mp4")).expanduser().resolve()
+        shotlist_path = Path(str(production_manifest["shotlist_path"])).expanduser().resolve() if production_manifest.get("shotlist_path") else None
+        if not output_path.exists():
+            raise FileNotFoundError(output_path)
+        return output_path, shotlist_path, resolved_run_dir
+
+    stitch_manifest_path = resolved_run_dir / "stitch-manifest.json"
+    if stitch_manifest_path.exists():
+        stitch_manifest = read_json(stitch_manifest_path)
+        output_path = Path(str(stitch_manifest.get("output_path") or resolved_run_dir / "story.mp4")).expanduser().resolve()
+        shotlist_path = (resolved_run_dir / "shotlist.json") if (resolved_run_dir / "shotlist.json").exists() else None
+        if not output_path.exists():
+            raise FileNotFoundError(output_path)
+        return output_path, shotlist_path, resolved_run_dir
+
+    default_video_path = resolved_run_dir / "story.mp4"
+    if default_video_path.exists():
+        shotlist_path = (resolved_run_dir / "shotlist.json") if (resolved_run_dir / "shotlist.json").exists() else None
+        return default_video_path, shotlist_path, resolved_run_dir
+
+    raise FileNotFoundError(f"Could not find a stitched video in {resolved_run_dir}.")
+
+
+def _resolve_youtube_title(*, title: Optional[str], video_path: Path, shotlist_path: Optional[Path]) -> str:
+    if title and title.strip():
+        return title.strip()
+
+    if shotlist_path and shotlist_path.exists():
+        try:
+            shotlist = load_shotlist(shotlist_path)
+        except Exception:
+            shotlist = None
+        if shotlist:
+            project_title = str((shotlist.get("project") or {}).get("title") or "").strip()
+            if project_title:
+                return project_title
+
+    return _humanize_video_stem(video_path.stem)
+
+
+def _read_optional_text(*, value: Optional[str], file_path: Optional[str]) -> str:
+    if value and file_path:
+        raise ValueError("Choose either a direct description or --description-file, not both.")
+    if value:
+        return value.strip()
+    if file_path:
+        return Path(file_path).expanduser().resolve().read_text(encoding="utf-8").strip()
+    return ""
+
+
+def _parse_csv(value: Optional[str]) -> List[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _humanize_video_stem(value: str) -> str:
+    parts = [part for part in value.replace("_", " ").replace("-", " ").split() if part]
+    if not parts:
+        return "Story Video"
+    return " ".join(part.capitalize() if part.islower() else part for part in parts)

@@ -33,6 +33,20 @@ OUTPUT_PRESETS: Dict[str, Dict[str, str]] = {
         "subtitle_layout": "vertical",
         "format_guidance": "Compose for 9:16 vertical framing with quick, simple subject reads. Center the subject, prioritize one clear action per shot, and reserve lower-center subtitle safe area.",
     },
+    "storybook-pro-landscape": {
+        "size": "1792x1024",
+        "seconds": "8",
+        "subtitle_preset": "storybook",
+        "subtitle_layout": "widescreen",
+        "format_guidance": "Compose for premium 16:9 landscape framing. Favor hero-shot clarity, controlled negative space, strong subject silhouette, and keep the lower center safe for optional subtitles.",
+    },
+    "storybook-pro-vertical": {
+        "size": "1024x1792",
+        "seconds": "8",
+        "subtitle_preset": "large",
+        "subtitle_layout": "vertical",
+        "format_guidance": "Compose for premium 9:16 vertical framing. Keep the hero subject centered, stack action vertically, protect the lower-center subtitle safe area, and avoid important details at the top and bottom extremes.",
+    },
 }
 
 
