@@ -57,5 +57,20 @@ def build_shot_prompt(project: Dict[str, Any], shot: Dict[str, Any]) -> str:
     if audio_notes:
         sentences.append(f"Audio direction: {audio_notes}.")
 
+    narration_line = str(shot.get("narration_line") or "").strip()
+    narration_cue = str(shot.get("narration_cue") or "").strip()
+    sfx_notes = str(shot.get("sfx_notes") or "").strip()
+
+    sentences.append(
+        "Narration is added later as external voiceover; do not depend on visible speaking, lip-sync, or character dialogue performance."
+    )
+    if narration_line:
+        if narration_cue:
+            sentences.append(f"Voiceover reference: {narration_cue} narration says '{narration_line}'.")
+        else:
+            sentences.append(f"Voiceover reference: narration says '{narration_line}'.")
+    if sfx_notes:
+        sentences.append(f"SFX: {sfx_notes}.")
+
     sentences.append(f"Constraints: {_join_constraints(constraints)}.")
     return " ".join(sentences)

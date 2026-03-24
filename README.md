@@ -4,8 +4,9 @@ Repository: `https://github.com/yongjip/multiversal-pictures.git`
 
 This repository is focused on a Python-based OpenAI workflow for:
 
-- generating shot lists from story prompts
-- rendering stable video clips from those shot lists
+- generating narration-first storybook shot lists from story prompts
+- rendering stable visual clips that play under external voiceover
+- exporting narration scripts for TTS and final edit
 - iterating with character continuity and shot-level control
 
 ## Start
@@ -28,6 +29,8 @@ Set `OPENAI_API_KEY` in `/Users/yongjip/Projects/potato-king/.env`.
 ## Agent Workflow
 
 - `generate-shotlist`: story prompt -> story brief -> shotlist JSON
+- `export-narration`: shotlist JSON -> narration script
+- `synthesize-narration`: shotlist JSON -> narration audio track
 - `render-shotlist`: shotlist JSON -> rendered video clips
 - `create-character`: reference video -> reusable character ID
 
@@ -42,7 +45,53 @@ multiversal-pictures generate-shotlist \
 ```
 
 ```bash
+multiversal-pictures export-narration \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story/narration.md
+```
+
+```bash
+multiversal-pictures synthesize-narration \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --output-dir /Users/yongjip/Projects/potato-king/runs/panda_story/narration
+```
+
+```bash
 multiversal-pictures render-shotlist \
   --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
   --output /Users/yongjip/Projects/potato-king/runs/panda_story
 ```
+
+```bash
+multiversal-pictures render-shotlist \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story \
+  --jobs 4 \
+  --stitch-output /Users/yongjip/Projects/potato-king/runs/panda_story/story.mp4 \
+  --stitch-overwrite
+```
+
+```bash
+multiversal-pictures stitch-run \
+  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story/story.mp4 \
+  --overwrite
+```
+
+```bash
+multiversal-pictures stitch-run \
+  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story/story-with-narration.mp4 \
+  --narration-audio /Users/yongjip/Projects/potato-king/runs/panda_story/narration/narration.wav \
+  --overwrite
+```
+
+## Positioning
+
+`Multiversal Pictures` is optimized for narration-led storybook videos.
+
+- clips are generated as expressive visuals, not dialogue performances
+- narration is planned per shot and exported for TTS or human voiceover
+- shots can render concurrently and then be stitched into one master video
+- stitched masters can mix the clip audio bed with synthesized narration
+- this avoids unstable lip-sync and keeps children’s-story pacing under tighter control

@@ -7,10 +7,15 @@ from typing import Any, Dict, List, Optional, Set
 
 from .agents import StoryAgentConfig, StoryToShotlistAgent, default_agent_model, default_agent_reasoning_effort
 from .dotenv import load_dotenv
-from .files import ensure_dir, read_json, slugify, utc_timestamp, write_bytes, write_json
+from .files import ensure_dir, write_bytes, write_json
+from .narration import build_narration_plan, render_narration_markdown
 from .openai_responses import OpenAIResponsesClient
+from .openai_speech import OpenAISpeechClient
 from .openai_videos import OpenAIAPIError, OpenAIVideosClient
-from .shotlist import build_shot_request, load_shotlist, preferred_variants, resolve_shot_order
+from .rendering import render_shots
+from .shotlist import load_shotlist, resolve_shot_order
+from .stitching import stitch_run
+from .tts import synthesize_narration
 
 
 SAMPLE_SHOTLIST = {
@@ -22,6 +27,8 @@ SAMPLE_SHOTLIST = {
         "poll_interval_seconds": 10,
         "download_variants": ["video", "thumbnail"],
         "style_notes": "polished storybook animation, gentle cinematic motion, soft textures, clear focal composition",
+        "narration_style": "warm, calm bedtime-story narrator",
+        "narration_notes": "Keep each line short and clear enough to sit comfortably over the shot. Let narration carry the story so visuals stay expressive and simple.",
         "consistency_notes": "Pobi is a small round panda cub with soft black-and-white fur, bright curious eyes, and a tiny green scarf. Keep his face shape, body proportions, and scarf consistent across all shots.",
         "constraints": [
             "family-friendly children's story tone",
@@ -29,7 +36,7 @@ SAMPLE_SHOTLIST = {
             "clean anatomy and natural motion",
             "no scary imagery or aggressive action"
         ],
-        "audio_notes": "Gentle bamboo forest ambience and soft birdsong, no spoken dialogue."
+        "audio_notes": "Gentle bamboo forest ambience and soft birdsong under external narration."
     },
     "shots": [
         {
@@ -41,7 +48,11 @@ SAMPLE_SHOTLIST = {
             "setting": "a cozy bamboo hut on a green mountain at sunrise",
             "lighting": "soft golden sunrise light through paper windows",
             "camera_motion": "slow push-in",
-            "mood": "warm, calm, child-friendly"
+            "mood": "warm, calm, child-friendly",
+            "narration_line": "On a soft green mountain, little Pobi opened his eyes to a brand-new morning.",
+            "narration_cue": "start softly after the first half-second",
+            "narration_offset_ms": 500,
+            "sfx_notes": "light breeze, soft blanket rustle, tiny morning birds"
         },
         {
             "id": "shot-02-walk",
@@ -52,7 +63,11 @@ SAMPLE_SHOTLIST = {
             "setting": "a misty bamboo forest with dew on the leaves",
             "lighting": "fresh morning light with soft haze",
             "camera_motion": "gentle side-tracking move",
-            "mood": "playful and peaceful"
+            "mood": "playful and peaceful",
+            "narration_line": "His tummy gave a tiny rumble, so he set off to find the freshest bamboo in the forest.",
+            "narration_cue": "land the second clause as he reaches the grove",
+            "narration_offset_ms": 350,
+            "sfx_notes": "gentle footsteps on leaves, soft forest ambience"
         },
         {
             "id": "shot-03-bamboo",
@@ -63,7 +78,11 @@ SAMPLE_SHOTLIST = {
             "setting": "a bright bamboo grove filled with fresh green leaves",
             "lighting": "clean daylight with soft highlights on the leaves",
             "camera_motion": "subtle handheld-like drift",
-            "mood": "cozy and joyful"
+            "mood": "cozy and joyful",
+            "narration_line": "Crunch, crunch, crunch. Pobi's breakfast was cool, sweet, and delicious.",
+            "narration_cue": "let the first crunch happen before the narration starts",
+            "narration_offset_ms": 900,
+            "sfx_notes": "clear bamboo crunch, leaf rustle, soft happy hum"
         },
         {
             "id": "shot-04-sharing",
@@ -74,7 +93,11 @@ SAMPLE_SHOTLIST = {
             "setting": "a sunny clearing beside the bamboo grove",
             "lighting": "warm morning sunlight with soft sparkles through the trees",
             "camera_motion": "slow circular move around the group",
-            "mood": "kind, gentle, celebratory"
+            "mood": "kind, gentle, celebratory",
+            "narration_line": "Soon everyone was smiling in the sunshine, because breakfast always tastes better when it is shared.",
+            "narration_cue": "deliver the final clause as the camera opens to the group",
+            "narration_offset_ms": 400,
+            "sfx_notes": "soft chirps, friendly nibbling, gentle musical swell"
         }
     ]
 }
@@ -114,8 +137,14 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--download-variants", help="Override variants, e.g. video,thumbnail.")
     render_parser.add_argument("--dry-run", action="store_true", help="Resolve prompts and requests without API calls.")
     render_parser.add_argument("--skip-existing", action="store_true", help="Skip shots with an existing completed manifest.")
+    render_parser.add_argument("--jobs", type=int, default=1, help="Number of shots to render concurrently.")
     render_parser.add_argument("--poll-interval", type=int, help="Polling interval seconds.")
     render_parser.add_argument("--timeout-seconds", type=int, help="Maximum wait time per shot.")
+    render_parser.add_argument("--stitch-output", help="Optional output video path to stitch completed shot videos after rendering.")
+    render_parser.add_argument("--stitch-overwrite", action="store_true", help="Allow overwriting an existing stitched output.")
+    render_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched output.")
+    render_parser.add_argument("--clip-audio-volume", type=float, help="Mix level for original clip audio when narration is present.")
+    render_parser.add_argument("--narration-volume", type=float, help="Mix level for narration audio.")
 
     character_parser = subparsers.add_parser("create-character", help="Create a reusable character from a reference video.")
     character_parser.add_argument("--video", required=True, help="Absolute or relative path to a reference video file.")
@@ -126,6 +155,27 @@ def build_parser() -> argparse.ArgumentParser:
     download_parser.add_argument("--video-id", required=True, help="OpenAI video job ID.")
     download_parser.add_argument("--variant", default="video", help="video | thumbnail | spritesheet")
     download_parser.add_argument("--output", required=True, help="Output file path.")
+
+    narration_parser = subparsers.add_parser("export-narration", help="Export a narration script from a shot list.")
+    narration_parser.add_argument("--shotlist", required=True, help="Shot list JSON path.")
+    narration_parser.add_argument("--output", required=True, help="Output file path.")
+    narration_parser.add_argument("--format", choices=["markdown", "json"], help="Override output format.")
+
+    synth_parser = subparsers.add_parser("synthesize-narration", help="Generate narration audio from a shot list with OpenAI TTS.")
+    synth_parser.add_argument("--shotlist", required=True, help="Shot list JSON path.")
+    synth_parser.add_argument("--output-dir", required=True, help="Output directory for narration assets.")
+    synth_parser.add_argument("--model", help="Override TTS model.")
+    synth_parser.add_argument("--voice", help="Override TTS voice.")
+    synth_parser.add_argument("--response-format", choices=["mp3", "wav", "opus", "aac", "flac", "pcm"], help="Override TTS response format.")
+    synth_parser.add_argument("--default-offset-ms", type=int, help="Fallback narration offset when a shot does not define one.")
+
+    stitch_parser = subparsers.add_parser("stitch-run", help="Combine completed shot videos from a render run into one video.")
+    stitch_parser.add_argument("--run-dir", required=True, help="Render run directory containing run-manifest.json.")
+    stitch_parser.add_argument("--output", required=True, help="Output stitched video path.")
+    stitch_parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing output file.")
+    stitch_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched video.")
+    stitch_parser.add_argument("--clip-audio-volume", type=float, help="Mix level for original clip audio when narration is present.")
+    stitch_parser.add_argument("--narration-volume", type=float, help="Mix level for narration audio.")
 
     return parser
 
@@ -148,6 +198,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             return cmd_create_character(args)
         if args.command == "download":
             return cmd_download(args)
+        if args.command == "export-narration":
+            return cmd_export_narration(args)
+        if args.command == "synthesize-narration":
+            return cmd_synthesize_narration(args)
+        if args.command == "stitch-run":
+            return cmd_stitch_run(args)
     except (OpenAIAPIError, TimeoutError, ValueError, FileNotFoundError) as error:
         print(f"Error: {error}")
         return 1
@@ -212,118 +268,38 @@ def cmd_render_shotlist(args: argparse.Namespace) -> int:
     project = dict(shotlist.get("project") or {})
     ordered_shots = resolve_shot_order(shotlist["shots"])
     selected_ids = _selected_ids(args.only)
-    known_videos: Dict[str, str] = {}
-
-    run_dir = ensure_dir(output_dir)
-    requests_dir = ensure_dir(run_dir / "requests")
-    shots_dir = ensure_dir(run_dir / "shots")
-
-    run_manifest: Dict[str, Any] = {
-        "project_title": project.get("title") or shotlist_path.stem,
-        "shotlist_path": str(shotlist_path),
-        "generated_at": utc_timestamp(),
-        "dry_run": bool(args.dry_run),
-        "shots": [],
-    }
-
-    write_json(run_dir / "shotlist.json", shotlist)
-
     client = None if args.dry_run else _client_from_env(args.timeout_seconds)
     poll_interval = args.poll_interval or int(project.get("poll_interval_seconds") or os.getenv("OPENAI_POLL_INTERVAL_SECONDS", "10"))
     timeout_seconds = args.timeout_seconds or int(os.getenv("OPENAI_VIDEO_TIMEOUT_SECONDS", "1800"))
+    run_manifest = render_shots(
+        shotlist_path=shotlist_path,
+        project=project,
+        ordered_shots=ordered_shots,
+        output_dir=output_dir,
+        selected_ids=selected_ids,
+        download_variants_override=args.download_variants,
+        dry_run=bool(args.dry_run),
+        skip_existing=bool(args.skip_existing),
+        poll_interval=poll_interval,
+        timeout_seconds=timeout_seconds,
+        jobs=max(1, int(args.jobs or 1)),
+        client=client,
+    )
+    print(f"Wrote run manifest: {output_dir / 'run-manifest.json'}")
 
-    for shot in ordered_shots:
-        if selected_ids and shot["id"] not in selected_ids:
-            continue
-
-        shot_dir = ensure_dir(shots_dir / f"{shot['order']:02d}-{slugify(shot['id'])}")
-        shot_manifest_path = shot_dir / "shot-manifest.json"
-        if args.skip_existing and shot_manifest_path.exists():
-            previous = read_json(shot_manifest_path)
-            if previous.get("status") == "completed" and previous.get("video_id"):
-                known_videos[shot["id"]] = previous["video_id"]
-                run_manifest["shots"].append(previous)
-                print(f"Skipping existing shot: {shot['id']}")
-                continue
-
-        request_payload = build_shot_request(
-            project=project,
-            shot=shot,
-            shotlist_dir=shotlist_path.parent,
-            known_videos=known_videos,
-        )
-        request_path = requests_dir / f"{shot['order']:02d}-{slugify(shot['id'])}.json"
-        write_json(request_path, request_payload)
-
-        shot_manifest: Dict[str, Any] = {
-            "id": shot["id"],
-            "title": shot["title"],
-            "mode": shot.get("mode", "generate"),
-            "request_path": str(request_path),
-            "generated_at": utc_timestamp(),
-            "status": "dry_run" if args.dry_run else "queued",
-            "downloads": [],
-        }
-
+    if args.stitch_output:
         if args.dry_run:
-            write_json(shot_manifest_path, shot_manifest)
-            run_manifest["shots"].append(shot_manifest)
-            print(f"Prepared request: {shot['id']}")
-            continue
-
-        assert client is not None
-        creation_method = str(shot.get("mode") or "generate").lower()
-        if creation_method == "generate":
-            job = client.create_video(request_payload)
-        elif creation_method == "extend":
-            job = client.create_extension(request_payload)
-        elif creation_method == "edit":
-            job = client.create_edit(request_payload)
+            print("Skipped stitching because render ran in dry-run mode.")
         else:
-            raise ValueError(f"Unsupported shot mode: {creation_method}")
-
-        shot_manifest["video_id"] = job["id"]
-        shot_manifest["job_path"] = str(shot_dir / "job.json")
-        write_json(Path(shot_manifest["job_path"]), job)
-        print(f"Started {shot['id']}: {job['id']} ({job.get('status')})")
-
-        final_job = client.wait_for_video(
-            job["id"],
-            poll_interval=poll_interval,
-            timeout_seconds=timeout_seconds,
-            on_update=lambda current, shot_id=shot["id"]: _print_progress(shot_id, current),
-        )
-        print("")
-        write_json(Path(shot_manifest["job_path"]), final_job)
-        shot_manifest["status"] = str(final_job.get("status"))
-
-        if final_job.get("status") != "completed":
-            shot_manifest["error"] = final_job.get("error")
-            write_json(shot_manifest_path, shot_manifest)
-            run_manifest["shots"].append(shot_manifest)
-            print(f"Failed {shot['id']}: {final_job.get('error')}")
-            continue
-
-        known_videos[shot["id"]] = final_job["id"]
-        variants = preferred_variants(project, shot, args.download_variants)
-        for variant in variants:
-            extension = _variant_extension(variant)
-            output_path = shot_dir / f"{variant}{extension}"
-            content = client.download_content(final_job["id"], variant=variant)
-            write_bytes(output_path, content)
-            shot_manifest["downloads"].append(
-                {
-                    "variant": variant,
-                    "path": str(output_path),
-                }
+            stitch_manifest = stitch_run(
+                run_dir=output_dir,
+                output_path=Path(args.stitch_output).resolve(),
+                overwrite=bool(args.stitch_overwrite),
+                narration_audio_path=Path(args.narration_audio).resolve() if args.narration_audio else None,
+                clip_audio_volume=args.clip_audio_volume,
+                narration_volume=args.narration_volume,
             )
-
-        write_json(shot_manifest_path, shot_manifest)
-        run_manifest["shots"].append(shot_manifest)
-        print(f"Completed {shot['id']}: {final_job['id']}")
-
-    write_json(run_dir / "run-manifest.json", run_manifest)
-    print(f"Wrote run manifest: {run_dir / 'run-manifest.json'}")
+            print(f"Wrote stitched video: {stitch_manifest['output_path']}")
     return 0
 
 
@@ -352,6 +328,56 @@ def cmd_download(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export_narration(args: argparse.Namespace) -> int:
+    shotlist_path = Path(args.shotlist).resolve()
+    output_path = Path(args.output).resolve()
+    output_format = args.format or ("json" if output_path.suffix.lower() == ".json" else "markdown")
+    shotlist = load_shotlist(shotlist_path)
+    plan = build_narration_plan(shotlist)
+
+    if output_format == "json":
+        write_json(output_path, plan)
+    else:
+        ensure_dir(output_path.parent)
+        output_path.write_text(render_narration_markdown(plan), encoding="utf-8")
+
+    print(f"Wrote narration {output_format}: {output_path}")
+    return 0
+
+
+def cmd_synthesize_narration(args: argparse.Namespace) -> int:
+    client = _speech_client_from_env()
+    model = args.model or os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
+    voice = args.voice or os.getenv("OPENAI_TTS_VOICE", "alloy")
+    response_format = args.response_format or os.getenv("OPENAI_TTS_RESPONSE_FORMAT", "wav")
+    default_offset_ms = args.default_offset_ms or int(os.getenv("STORYBOOK_NARRATION_OFFSET_MS", "500"))
+    manifest = synthesize_narration(
+        shotlist_path=Path(args.shotlist).resolve(),
+        output_dir=Path(args.output_dir).resolve(),
+        client=client,
+        model=model,
+        voice=voice,
+        response_format=response_format,
+        default_offset_ms=default_offset_ms,
+    )
+    print(f"Wrote narration manifest: {Path(args.output_dir).resolve() / 'narration-manifest.json'}")
+    print(f"Wrote narration audio: {manifest['master_audio_path']}")
+    return 0
+
+
+def cmd_stitch_run(args: argparse.Namespace) -> int:
+    stitch_manifest = stitch_run(
+        run_dir=Path(args.run_dir).resolve(),
+        output_path=Path(args.output).resolve(),
+        overwrite=bool(args.overwrite),
+        narration_audio_path=Path(args.narration_audio).resolve() if args.narration_audio else None,
+        clip_audio_volume=args.clip_audio_volume,
+        narration_volume=args.narration_volume,
+    )
+    print(f"Wrote stitched video: {stitch_manifest['output_path']}")
+    return 0
+
+
 def _client_from_env(timeout_override: Optional[int]) -> OpenAIVideosClient:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -370,6 +396,15 @@ def _responses_client_from_env() -> OpenAIResponsesClient:
     return OpenAIResponsesClient(api_key=api_key, base_url=base_url, timeout=timeout)
 
 
+def _speech_client_from_env() -> OpenAISpeechClient:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is missing.")
+    base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    timeout = int(os.getenv("OPENAI_TTS_TIMEOUT_SECONDS", "600"))
+    return OpenAISpeechClient(api_key=api_key, base_url=base_url, timeout=timeout)
+
+
 def _read_prompt_text(prompt: Optional[str], prompt_file: Optional[str]) -> str:
     if prompt and prompt.strip():
         return prompt.strip()
@@ -382,18 +417,3 @@ def _selected_ids(value: Optional[str]) -> Set[str]:
     if not value:
         return set()
     return {item.strip() for item in value.split(",") if item.strip()}
-
-
-def _variant_extension(variant: str) -> str:
-    mapping = {
-        "video": ".mp4",
-        "thumbnail": ".webp",
-        "spritesheet": ".jpg",
-    }
-    return mapping.get(variant, ".bin")
-
-
-def _print_progress(shot_id: str, video: Dict[str, Any]) -> None:
-    progress = video.get("progress", 0)
-    status = video.get("status", "unknown")
-    print(f"\r{shot_id}: {status} {progress}%", end="", flush=True)

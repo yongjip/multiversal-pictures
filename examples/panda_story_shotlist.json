@@ -10,6 +10,8 @@
       "thumbnail"
     ],
     "style_notes": "polished storybook animation, gentle cinematic motion, soft textures, clear focal composition",
+    "narration_style": "warm, calm bedtime-story narrator",
+    "narration_notes": "Keep each line short and clear enough to sit comfortably over the shot. Let narration carry the story so visuals stay expressive and simple.",
     "consistency_notes": "Pobi is a small round panda cub with soft black-and-white fur, bright curious eyes, and a tiny green scarf. Keep his face shape, body proportions, and scarf consistent across all shots.",
     "constraints": [
       "family-friendly children's story tone",
@@ -17,7 +19,7 @@
       "clean anatomy and natural motion",
       "no scary imagery or aggressive action"
     ],
-    "audio_notes": "Gentle bamboo forest ambience and soft birdsong, no spoken dialogue."
+    "audio_notes": "Gentle bamboo forest ambience and soft birdsong under external narration."
   },
   "shots": [
     {
@@ -29,7 +31,11 @@
       "setting": "a cozy bamboo hut on a green mountain at sunrise",
       "lighting": "soft golden sunrise light through paper windows",
       "camera_motion": "slow push-in",
-      "mood": "warm, calm, child-friendly"
+      "mood": "warm, calm, child-friendly",
+      "narration_line": "On a soft green mountain, little Pobi opened his eyes to a brand-new morning.",
+      "narration_cue": "start softly after the first half-second",
+      "narration_offset_ms": 500,
+      "sfx_notes": "light breeze, soft blanket rustle, tiny morning birds"
     },
     {
       "id": "shot-02-walk",
@@ -40,7 +46,11 @@
       "setting": "a misty bamboo forest with dew on the leaves",
       "lighting": "fresh morning light with soft haze",
       "camera_motion": "gentle side-tracking move",
-      "mood": "playful and peaceful"
+      "mood": "playful and peaceful",
+      "narration_line": "His tummy gave a tiny rumble, so he set off to find the freshest bamboo in the forest.",
+      "narration_cue": "land the second clause as he reaches the grove",
+      "narration_offset_ms": 350,
+      "sfx_notes": "gentle footsteps on leaves, soft forest ambience"
     },
     {
       "id": "shot-03-bamboo",
@@ -51,7 +61,11 @@
       "setting": "a bright bamboo grove filled with fresh green leaves",
       "lighting": "clean daylight with soft highlights on the leaves",
       "camera_motion": "subtle drifting close-up",
-      "mood": "cozy and joyful"
+      "mood": "cozy and joyful",
+      "narration_line": "Crunch, crunch, crunch. Pobi's breakfast was cool, sweet, and delicious.",
+      "narration_cue": "let the first crunch happen before the narration starts",
+      "narration_offset_ms": 900,
+      "sfx_notes": "clear bamboo crunch, leaf rustle, soft happy hum"
     },
     {
       "id": "shot-04-sharing",
@@ -62,7 +76,11 @@
       "setting": "a sunny clearing beside the bamboo grove",
       "lighting": "warm morning sunlight with soft sparkles through the trees",
       "camera_motion": "slow circular move around the group",
-      "mood": "kind, gentle, celebratory"
+      "mood": "kind, gentle, celebratory",
+      "narration_line": "Soon everyone was smiling in the sunshine, because breakfast always tastes better when it is shared.",
+      "narration_cue": "deliver the final clause as the camera opens to the group",
+      "narration_offset_ms": 400,
+      "sfx_notes": "soft chirps, friendly nibbling, gentle musical swell"
     }
   ]
 }

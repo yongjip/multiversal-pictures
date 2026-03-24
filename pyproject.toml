@@ -11,7 +11,7 @@ requires-python = ">=3.9"
 authors = [
   { name = "Yongjip Kim" }
 ]
-dependencies = []
+dependencies = ["imageio-ffmpeg>=0.6.0"]
 
 [project.scripts]
 multiversal-pictures = "multiversal_pictures.cli:main"

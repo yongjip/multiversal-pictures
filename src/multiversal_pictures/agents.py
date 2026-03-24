@@ -117,8 +117,9 @@ class StoryToShotlistAgent:
     def _build_story_brief_request(self, config: StoryAgentConfig) -> Dict[str, Any]:
         instructions = (
             "You are the Story Agent for Multiversal Pictures. "
-            "Turn a rough story premise into a production-ready visual story brief for a short video. "
+            "Turn a rough story premise into a production-ready visual story brief for a narration-led storybook video. "
             "Prioritize visual clarity, character continuity, emotional beats, and family-friendly storytelling. "
+            "Assume the final film uses external narration instead of character lip-sync dialogue. "
             "Keep internal IDs short and stable. Use the user's target language for user-facing fields."
         )
         user_prompt = (
@@ -127,7 +128,7 @@ class StoryToShotlistAgent:
             f"Language: {config.language}\n"
             f"Desired visual style: {config.visual_style}\n"
             f"Target number of shots: {config.shot_count}\n"
-            "Return a brief that another agent can use to plan concrete renderable shots."
+            "Return a brief that another agent can use to plan concrete renderable shots with concise voiceover."
         )
         return {
             "instructions": instructions,
@@ -143,6 +144,7 @@ class StoryToShotlistAgent:
         instructions = (
             "You are the Shot Planner Agent for Multiversal Pictures. "
             "Convert the story brief into a renderable shot list for OpenAI video generation. "
+            "This project specializes in narration-led storybook videos, so visuals should support external voiceover rather than spoken dialogue inside the clip. "
             "Every shot must be concrete, visually specific, and directly usable by a downstream renderer. "
             "Preserve character continuity and keep the project family-friendly. "
             "Use the requested language for shot titles and audience-facing text, but keep IDs machine-safe."
@@ -152,7 +154,9 @@ class StoryToShotlistAgent:
             f"Use default video model {config.video_model}, size {config.size}, and seconds {config.seconds} unless a shot clearly needs an override. "
             "Valid download variants are video, thumbnail, and spritesheet. "
             f"Generate exactly {config.shot_count} shots unless the brief clearly requires one extra closing beat. "
-            "Include continuity notes in the project block and make sure each shot has strong shot_type, subject, action, setting, lighting, camera_motion, and mood fields."
+            "Include continuity notes in the project block and make sure each shot has strong shot_type, subject, action, setting, lighting, camera_motion, and mood fields. "
+            "For every shot include a short narration_line, a narration_cue describing when the line lands, a narration_offset_ms integer, and sfx_notes for the sound mix. "
+            "Do not rely on visible talking or lip-synced dialogue."
         )
         return {
             "instructions": instructions,
@@ -193,6 +197,7 @@ def _story_brief_schema() -> Dict[str, Any]:
             "moral": {"type": "string"},
             "visual_style": {"type": "string"},
             "narration_style": {"type": "string"},
+            "narration_notes": {"type": "string"},
             "consistency_notes": {"type": "string"},
             "audio_notes": {"type": "string"},
             "characters": {
@@ -222,12 +227,13 @@ def _story_brief_schema() -> Dict[str, Any]:
                         "title": {"type": "string"},
                         "summary": {"type": "string"},
                         "emotional_goal": {"type": "string"},
+                        "narration_focus": {"type": "string"},
                         "key_visuals": {
                             "type": "array",
                             "items": {"type": "string"},
                         },
                     },
-                    "required": ["beat_id", "title", "summary", "emotional_goal", "key_visuals"],
+                    "required": ["beat_id", "title", "summary", "emotional_goal", "narration_focus", "key_visuals"],
                 },
             },
         },
@@ -240,6 +246,7 @@ def _story_brief_schema() -> Dict[str, Any]:
             "moral",
             "visual_style",
             "narration_style",
+            "narration_notes",
             "consistency_notes",
             "audio_notes",
             "characters",
@@ -266,6 +273,8 @@ def _shotlist_schema() -> Dict[str, Any]:
                         "items": {"type": "string"},
                     },
                     "style_notes": {"type": "string"},
+                    "narration_style": {"type": "string"},
+                    "narration_notes": {"type": "string"},
                     "consistency_notes": {"type": "string"},
                     "constraints": {
                         "type": "array",
@@ -280,6 +289,8 @@ def _shotlist_schema() -> Dict[str, Any]:
                     "seconds",
                     "download_variants",
                     "style_notes",
+                    "narration_style",
+                    "narration_notes",
                     "consistency_notes",
                     "constraints",
                     "audio_notes",
@@ -300,6 +311,10 @@ def _shotlist_schema() -> Dict[str, Any]:
                         "lighting": {"type": "string"},
                         "camera_motion": {"type": "string"},
                         "mood": {"type": "string"},
+                        "narration_line": {"type": "string"},
+                        "narration_cue": {"type": "string"},
+                        "narration_offset_ms": {"type": "integer"},
+                        "sfx_notes": {"type": "string"},
                         "characters": {
                             "type": "array",
                             "items": {
@@ -326,6 +341,9 @@ def _shotlist_schema() -> Dict[str, Any]:
                         "lighting",
                         "camera_motion",
                         "mood",
+                        "narration_line",
+                        "narration_cue",
+                        "sfx_notes",
                         "characters",
                         "constraints",
                     ],

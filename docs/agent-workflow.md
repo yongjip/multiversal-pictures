@@ -8,11 +8,15 @@ flowchart LR
     S --> B["Story Brief JSON"]
     B --> P["Shot Planner Agent"]
     P --> L["Shotlist JSON"]
+    L --> N["Narration Export"]
+    N --> A["Narration Synthesis"]
+    A --> T["TTS / Final Edit"]
     L --> H["Human Review"]
     H --> R["Render Agent"]
     R --> V["OpenAI Videos API"]
     V --> O["Downloaded Clips"]
     O --> Q["Review / Edit / Extend Loop"]
+    Q --> T
 ```
 
 ## Roles
@@ -22,10 +26,21 @@ flowchart LR
   - defines audience, tone, character bible, story beats, and continuity notes
 - `Shot Planner Agent`
   - converts the brief into a renderable `shotlist.json`
-  - ensures every shot has concrete camera, setting, lighting, and action fields
+  - ensures every shot has concrete camera, setting, lighting, action, and narration fields
+- `Narration Export`
+  - converts the shot list into a voiceover script with timing cues and SFX notes
+  - produces a clean handoff for TTS or human voice recording
+- `Narration Synthesis`
+  - generates per-shot narration audio with OpenAI TTS
+  - aligns each line to shot timing and builds one master narration track
 - `Render Agent`
   - executes the shot list with the OpenAI Videos API
   - polls job status and downloads result assets
+  - can render independent shots concurrently
+  - keeps clips visually expressive without relying on spoken dialogue in-frame
+- `Stitch Step`
+  - combines finished shot clips into one master video
+  - runs after render or as a separate recovery step
 - `Review Agent`
   - checks finished clips and decides whether to keep, edit, or extend
 
@@ -34,6 +49,7 @@ flowchart LR
 - one prompt rarely preserves character continuity across multiple clips
 - a story brief gives the planner a stable source of truth
 - a shot list makes the render layer deterministic and retryable
+- narration-led storybook videos avoid unstable lip-sync and inconsistent in-video speech
 - failed clips can be rerun without rebuilding the whole story
 
 ## Recommended operating loop
@@ -41,10 +57,14 @@ flowchart LR
 1. write or paste a short story prompt
 2. run `generate-shotlist`
 3. inspect the generated brief and shot list
-4. render one shot first
-5. fix prompt or shot fields if needed
-6. render the full sequence
-7. use `edit` or `extend` for problem shots
+4. run `export-narration`
+5. review narration timing and shot pacing together
+6. run `synthesize-narration`
+7. render one shot first
+8. fix prompt or shot fields if needed
+9. render the full sequence, optionally in parallel
+10. stitch completed clips into one master video, optionally with narration audio
+11. use `edit` or `extend` for problem shots
 
 ## Commands
 
@@ -65,12 +85,58 @@ multiversal-pictures generate-shotlist \
   --dry-run
 ```
 
+Export the narration script:
+
+```bash
+multiversal-pictures export-narration \
+  --shotlist examples/panda_story_generated.json \
+  --output runs/panda_story/narration.md
+```
+
+Generate narration audio:
+
+```bash
+multiversal-pictures synthesize-narration \
+  --shotlist examples/panda_story_generated.json \
+  --output-dir runs/panda_story/narration
+```
+
 Render the generated shot list:
 
 ```bash
 multiversal-pictures render-shotlist \
   --shotlist examples/panda_story_generated.json \
   --output runs/panda_story
+```
+
+Render in parallel and stitch automatically:
+
+```bash
+multiversal-pictures render-shotlist \
+  --shotlist examples/panda_story_generated.json \
+  --output runs/panda_story \
+  --jobs 4 \
+  --stitch-output runs/panda_story/story.mp4 \
+  --stitch-overwrite
+```
+
+Stitch an existing run later:
+
+```bash
+multiversal-pictures stitch-run \
+  --run-dir runs/panda_story \
+  --output runs/panda_story/story.mp4 \
+  --overwrite
+```
+
+Stitch and mix narration audio:
+
+```bash
+multiversal-pictures stitch-run \
+  --run-dir runs/panda_story \
+  --output runs/panda_story/story-with-narration.mp4 \
+  --narration-audio runs/panda_story/narration/narration.wav \
+  --overwrite
 ```
 
 ## OpenAI APIs used
