@@ -14,6 +14,7 @@ from .openai_speech import OpenAISpeechClient
 from .openai_videos import OpenAIAPIError, OpenAIVideosClient
 from .media import subtitle_layout_names, subtitle_preset_names
 from .output_presets import default_output_preset_name, output_preset_names, preset_project_overrides, resolve_output_preset
+from .production import StorybookProductionConfig, run_storybook_production
 from .rendering import render_shots
 from .shotlist import load_shotlist, resolve_shot_order
 from .stitching import stitch_run
@@ -162,6 +163,47 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--mute-clip-audio", action="store_true", help="Mute original clip audio when mixing narration.")
     render_parser.add_argument("--no-music-ducking", action="store_true", help="Do not duck background music under narration.")
 
+    produce_parser = subparsers.add_parser("produce", help="Run the storybook pipeline end-to-end and overlap narration with rendering.")
+    produce_input = produce_parser.add_mutually_exclusive_group(required=True)
+    produce_input.add_argument("--shotlist", help="Existing shot list JSON path.")
+    produce_input.add_argument("--prompt", help="Story premise or creative prompt.")
+    produce_input.add_argument("--prompt-file", help="Path to a text file containing the story premise.")
+    produce_parser.add_argument("--output", required=True, help="Output run directory.")
+    produce_parser.add_argument("--final-output", help="Optional final stitched video path. Defaults to <output>/story.mp4.")
+    produce_parser.add_argument("--brief-output", help="Optional path for the intermediate story brief JSON when generating from a prompt.")
+    produce_parser.add_argument("--trace-output", help="Optional path for the raw agent trace JSON when generating from a prompt.")
+    produce_parser.add_argument("--audience", default="children and families", help="Target audience description.")
+    produce_parser.add_argument("--language", default="en", help="Target language for user-facing text.")
+    produce_parser.add_argument("--style", default="polished storybook animation, gentle cinematic motion, soft textures", help="Desired visual style.")
+    produce_parser.add_argument("--shots", type=int, default=4, help="Target shot count when generating from a prompt.")
+    produce_parser.add_argument("--model", help="Override the planning model.")
+    produce_parser.add_argument("--reasoning-effort", choices=["minimal", "low", "medium", "high"], help="Override reasoning effort for the planning model.")
+    produce_parser.add_argument("--output-preset", choices=output_preset_names(), help="Preset for render size, duration, and subtitle defaults.")
+    produce_parser.add_argument("--size", help="Default output size to write into the shot list when generating from a prompt.")
+    produce_parser.add_argument("--seconds", help="Default clip length to write into the shot list when generating from a prompt.")
+    produce_parser.add_argument("--download-variants", help="Override variants, e.g. video,thumbnail.")
+    produce_parser.add_argument("--skip-existing", action="store_true", help="Skip shots with an existing completed manifest in the output run directory.")
+    produce_parser.add_argument("--jobs", type=int, default=1, help="Number of shots to render concurrently.")
+    produce_parser.add_argument("--poll-interval", type=int, help="Polling interval seconds.")
+    produce_parser.add_argument("--timeout-seconds", type=int, help="Maximum wait time per shot.")
+    produce_parser.add_argument("--narration-model", help="Override TTS model.")
+    produce_parser.add_argument("--narration-voice", help="Override TTS voice.")
+    produce_parser.add_argument("--narration-response-format", choices=["mp3", "wav", "opus", "aac", "flac", "pcm"], help="Override TTS response format.")
+    produce_parser.add_argument("--default-offset-ms", type=int, help="Fallback narration offset when a shot does not define one.")
+    produce_parser.add_argument("--background-music", help="Optional background music file to mix into the stitched output.")
+    produce_parser.add_argument("--subtitle-file", help="Optional SRT or VTT subtitle file to use instead of the generated captions.")
+    produce_parser.add_argument("--subtitle-language", default="eng", help="Subtitle language tag for the embedded subtitle track.")
+    produce_parser.add_argument("--burn-subtitles", action="store_true", help="Burn subtitle text into video frames instead of embedding a subtitle track.")
+    produce_parser.add_argument("--subtitle-preset", choices=subtitle_preset_names(), help="Preset style for burned subtitles.")
+    produce_parser.add_argument("--subtitle-layout", choices=subtitle_layout_names(), help="Layout profile for burned subtitles.")
+    produce_parser.add_argument("--subtitle-style", help="Optional ffmpeg ASS force_style overrides for burned subtitles.")
+    produce_parser.add_argument("--clip-audio-volume", type=float, help="Mix level for original clip audio when narration is present.")
+    produce_parser.add_argument("--narration-volume", type=float, help="Mix level for narration audio.")
+    produce_parser.add_argument("--music-volume", type=float, help="Mix level for background music.")
+    produce_parser.add_argument("--mute-clip-audio", action="store_true", help="Mute original clip audio when mixing narration.")
+    produce_parser.add_argument("--no-music-ducking", action="store_true", help="Do not duck background music under narration.")
+    produce_parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing final stitched output.")
+
     character_parser = subparsers.add_parser("create-character", help="Create a reusable character from a reference video.")
     character_parser.add_argument("--video", required=True, help="Absolute or relative path to a reference video file.")
     character_parser.add_argument("--name", help="Optional character name.")
@@ -229,6 +271,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return cmd_generate_shotlist(args)
         if args.command == "render-shotlist":
             return cmd_render_shotlist(args)
+        if args.command == "produce":
+            return cmd_produce(args)
         if args.command == "create-character":
             return cmd_create_character(args)
         if args.command == "download":
@@ -352,6 +396,60 @@ def cmd_render_shotlist(args: argparse.Namespace) -> int:
                 duck_music_under_narration=not bool(args.no_music_ducking),
             )
             print(f"Wrote stitched video: {stitch_manifest['output_path']}")
+    return 0
+
+
+def cmd_produce(args: argparse.Namespace) -> int:
+    run_dir = Path(args.output).resolve()
+    final_output_path = Path(args.final_output).resolve() if args.final_output else run_dir / "story.mp4"
+    default_offset_ms = args.default_offset_ms or int(os.getenv("STORYBOOK_NARRATION_OFFSET_MS", "500"))
+    manifest = run_storybook_production(
+        StorybookProductionConfig(
+            run_dir=run_dir,
+            output_path=final_output_path,
+            prompt=args.prompt,
+            prompt_file=Path(args.prompt_file).resolve() if args.prompt_file else None,
+            shotlist_path=Path(args.shotlist).resolve() if args.shotlist else None,
+            brief_output_path=Path(args.brief_output).resolve() if args.brief_output else None,
+            trace_output_path=Path(args.trace_output).resolve() if args.trace_output else None,
+            audience=args.audience,
+            language=args.language,
+            style=args.style,
+            shot_count=max(1, int(args.shots or 1)),
+            model=args.model,
+            reasoning_effort=args.reasoning_effort,
+            output_preset=args.output_preset,
+            size=args.size,
+            seconds=args.seconds,
+            jobs=max(1, int(args.jobs or 1)),
+            download_variants=args.download_variants,
+            skip_existing=bool(args.skip_existing),
+            poll_interval=args.poll_interval,
+            timeout_seconds=args.timeout_seconds,
+            narration_model=args.narration_model,
+            narration_voice=args.narration_voice,
+            narration_response_format=args.narration_response_format,
+            default_offset_ms=default_offset_ms,
+            subtitle_file=Path(args.subtitle_file).resolve() if args.subtitle_file else None,
+            subtitle_language=args.subtitle_language,
+            burn_subtitles=bool(args.burn_subtitles),
+            subtitle_preset=args.subtitle_preset,
+            subtitle_layout=args.subtitle_layout,
+            subtitle_style=args.subtitle_style,
+            clip_audio_volume=args.clip_audio_volume,
+            narration_volume=args.narration_volume,
+            music_volume=args.music_volume,
+            background_music_path=Path(args.background_music).resolve() if args.background_music else None,
+            mute_clip_audio=bool(args.mute_clip_audio),
+            no_music_ducking=bool(args.no_music_ducking),
+            overwrite=bool(args.overwrite),
+        )
+    )
+    print(f"Wrote production manifest: {run_dir / 'production-manifest.json'}")
+    print(f"Wrote shot list: {manifest['shotlist_path']}")
+    print(f"Wrote narration audio: {manifest['narration_manifest']['master_audio_path']}")
+    print(f"Wrote run manifest: {run_dir / 'run-manifest.json'}")
+    print(f"Wrote stitched video: {manifest['output_path']}")
     return 0
 
 

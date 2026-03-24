@@ -33,6 +33,7 @@ Set `OPENAI_API_KEY` in `/Users/yongjip/Projects/potato-king/.env`.
 - `synthesize-narration`: shotlist JSON -> narration audio track
 - `export-subtitles`: shotlist or narration timing -> SRT/VTT/JSON subtitles
 - `render-shotlist`: shotlist JSON -> rendered video clips
+- `produce`: prompt file or shotlist -> narration-led storybook master video
 - `create-character`: reference video -> reusable character ID
 
 Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, `storybook-short-vertical`
@@ -47,6 +48,20 @@ multiversal-pictures generate-shotlist \
   --prompt-file /Users/yongjip/Projects/potato-king/examples/panda_story_prompt.txt \
   --output-preset storybook-vertical \
   --output /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json
+```
+
+```bash
+multiversal-pictures produce \
+  --prompt-file /Users/yongjip/Projects/potato-king/examples/panda_story_prompt.txt \
+  --output-preset storybook-vertical \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical
+```
+
+```bash
+multiversal-pictures produce \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --output-preset storybook-vertical \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical
 ```
 
 ```bash
@@ -123,6 +138,7 @@ multiversal-pictures stitch-run \
 - clips are generated as expressive visuals, not dialogue performances
 - narration is planned per shot and exported for TTS or human voiceover
 - shots can render concurrently and then be stitched into one master video
+- the production wrapper can overlap narration synthesis with shot rendering and stitch the master automatically
 - stitched masters default to narration-first audio; clip audio can be added back only if needed
 - background music can be looped and automatically ducked under narration
 - subtitle sidecars can be exported from narration timing, embedded as soft tracks, or burned into frames

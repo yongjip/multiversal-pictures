@@ -8,15 +8,17 @@ flowchart LR
     S --> B["Story Brief JSON"]
     B --> P["Shot Planner Agent"]
     P --> L["Shotlist JSON"]
-    L --> N["Narration Export"]
+    L --> H["Human Review"]
+    H --> X["Production Command"]
+    X --> N["Narration Export"]
+    X --> R["Render Agent"]
     N --> A["Narration Synthesis"]
     A --> T["TTS / Final Edit"]
-    L --> H["Human Review"]
-    H --> R["Render Agent"]
     R --> V["OpenAI Videos API"]
     V --> O["Downloaded Clips"]
     O --> Q["Review / Edit / Extend Loop"]
-    Q --> T
+    Q --> X
+    T --> M["Stitch Master"]
 ```
 
 ## Roles
@@ -27,6 +29,11 @@ flowchart LR
 - `Shot Planner Agent`
   - converts the brief into a renderable `shotlist.json`
   - ensures every shot has concrete camera, setting, lighting, action, and narration fields
+- `Production Command`
+  - accepts either a story prompt or an existing shot list
+  - launches narration synthesis and shot rendering in parallel when a shot list is available
+  - stitches the final master video after both tracks are ready
+  - keeps the full storybook pipeline behind one high-level entrypoint
 - `Narration Export`
   - converts the shot list into a voiceover script with timing cues and SFX notes
   - produces a clean handoff for TTS or human voice recording
@@ -61,11 +68,11 @@ flowchart LR
 1. write or paste a short story prompt
 2. run `generate-shotlist`
 3. inspect the generated brief and shot list
-4. run `export-narration`
-5. review narration timing and shot pacing together
-6. run `synthesize-narration`
+4. hand off to the production command
+5. let narration synthesis and shot rendering overlap
+6. review narration timing and shot pacing together
 7. export or inspect subtitles if needed
-8. render one shot first
+8. render one shot first when iterating manually
 9. fix prompt or shot fields if needed
 10. render the full sequence, optionally in parallel
 11. stitch completed clips into one master video, optionally with narration audio and subtitles
@@ -179,6 +186,24 @@ Layout options for burned subtitles: `widescreen`, `vertical`, `auto`.
 Burned subtitle presets auto-scale to the output resolution; use `STORYBOOK_SUBTITLE_FONT_SCALE` and `STORYBOOK_SUBTITLE_MARGIN_SCALE` if you need global tuning.
 Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, `storybook-short-vertical`.
 When selected, an output preset overrides the project-level default render size, clip duration, framing guidance, and subtitle defaults.
+
+High-level production wrapper:
+
+```bash
+multiversal-pictures produce \
+  --prompt-file examples/panda_story_prompt.txt \
+  --output-preset storybook-vertical \
+  --output runs/panda_story_vertical
+```
+
+```bash
+multiversal-pictures produce \
+  --shotlist examples/panda_story_generated.json \
+  --output-preset storybook-vertical \
+  --output runs/panda_story_vertical
+```
+
+The production wrapper is the recommended entrypoint when you want one command to cover prompt ingestion, parallel narration/render work, and final stitching.
 
 ## OpenAI APIs used
 
