@@ -173,6 +173,151 @@ def mix_narration_audio(
     return "narration_only"
 
 
+def mix_storybook_audio(
+    *,
+    video_path: Path,
+    output_path: Path,
+    overwrite: bool = False,
+    narration_audio_path: Optional[Path] = None,
+    background_music_path: Optional[Path] = None,
+    clip_audio_volume: float = 0.0,
+    narration_volume: float = 1.0,
+    music_volume: float = 0.12,
+    duck_music_under_narration: bool = True,
+) -> str:
+    ffmpeg = ffmpeg_executable()
+    video_info = probe_media(video_path, ffmpeg=ffmpeg)
+    clip_audio_volume = max(0.0, float(clip_audio_volume))
+    narration_volume = max(0.0, float(narration_volume))
+    music_volume = max(0.0, float(music_volume))
+
+    command = [ffmpeg, "-y" if overwrite else "-n", "-i", str(video_path)]
+    input_index = 1
+    narration_index: Optional[int] = None
+    music_index: Optional[int] = None
+
+    if narration_audio_path:
+        narration_index = input_index
+        command.extend(["-i", str(narration_audio_path)])
+        input_index += 1
+
+    if background_music_path:
+        music_index = input_index
+        command.extend(["-stream_loop", "-1", "-i", str(background_music_path)])
+        input_index += 1
+
+    source_labels: List[str] = []
+    filter_parts: List[str] = []
+    mode_parts: List[str] = []
+
+    if video_info.has_audio and clip_audio_volume > 0:
+        filter_parts.append(f"[0:a]volume={clip_audio_volume}[clip]")
+        source_labels.append("[clip]")
+        mode_parts.append("clip")
+
+    narration_label: Optional[str] = None
+    if narration_index is not None:
+        filter_parts.append(f"[{narration_index}:a]volume={narration_volume}[narration]")
+        narration_label = "[narration]"
+        mode_parts.append("narration")
+
+    music_label: Optional[str] = None
+    if music_index is not None and music_volume > 0:
+        filter_parts.append(f"[{music_index}:a]volume={music_volume}[music]")
+        music_label = "[music]"
+        mode_parts.append("music")
+
+    if music_label and narration_label and duck_music_under_narration:
+        filter_parts.append(f"{music_label}{narration_label}sidechaincompress=threshold=0.03:ratio=10:attack=15:release=400[ducked_music]")
+        music_label = "[ducked_music]"
+        mode_parts.append("ducked")
+
+    if music_label:
+        source_labels.append(music_label)
+    if narration_label:
+        source_labels.append(narration_label)
+
+    if not source_labels:
+        if output_path.exists() and not overwrite:
+            raise ValueError(f"Output already exists: {output_path}")
+        _copy_file(video_path, output_path, overwrite=overwrite)
+        return "video_only"
+
+    if len(source_labels) == 1:
+        source_label = source_labels[0]
+        filter_parts.append(f"{source_label}anull[aout]")
+    else:
+        joined = "".join(source_labels)
+        filter_parts.append(f"{joined}amix=inputs={len(source_labels)}:normalize=0:duration=first[aout]")
+
+    command.extend(
+        [
+            "-filter_complex",
+            ";".join(filter_parts),
+            "-map",
+            "0:v:0",
+            "-map",
+            "[aout]",
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-movflags",
+            "+faststart",
+            "-shortest",
+            str(output_path),
+        ]
+    )
+    _run_ffmpeg(command, error_prefix="Storybook audio mix failed")
+    return "_plus_".join(mode_parts) if mode_parts else "video_only"
+
+
+def mux_subtitle_track(
+    *,
+    video_path: Path,
+    subtitle_path: Path,
+    output_path: Path,
+    overwrite: bool = False,
+    language: str = "eng",
+) -> str:
+    suffix = subtitle_path.suffix.lower()
+    if suffix not in {".srt", ".vtt"}:
+        raise ValueError(f"Unsupported subtitle format: {subtitle_path}")
+
+    ffmpeg = ffmpeg_executable()
+    command = [
+        ffmpeg,
+        "-y" if overwrite else "-n",
+        "-i",
+        str(video_path),
+        "-i",
+        str(subtitle_path),
+        "-map",
+        "0:v:0",
+        "-map",
+        "0:a?",
+        "-map",
+        "1:0",
+        "-c:v",
+        "copy",
+        "-c:a",
+        "copy",
+        "-c:s",
+        "mov_text",
+        "-metadata:s:s:0",
+        f"language={language}",
+        "-metadata:s:s:0",
+        "handler_name=Storybook Subtitles",
+        "-disposition:s:0",
+        "default",
+        "-movflags",
+        "+faststart",
+        str(output_path),
+    ]
+    _run_ffmpeg(command, error_prefix="Subtitle mux failed")
+    return "embedded_subtitles"
+
+
 def align_audio_to_duration(
     *,
     input_audio_path: Path,

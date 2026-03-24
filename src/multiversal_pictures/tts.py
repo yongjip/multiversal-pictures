@@ -8,6 +8,7 @@ from .media import align_audio_to_duration, concat_audio_tracks, probe_media
 from .narration import build_narration_plan
 from .openai_speech import OpenAISpeechClient
 from .shotlist import load_shotlist
+from .subtitles import write_default_subtitle_assets
 
 
 def synthesize_narration(
@@ -87,6 +88,13 @@ def synthesize_narration(
     manifest["master_duration_seconds"] = master_info.duration_seconds
 
     write_json(run_dir / "narration-plan.json", plan)
+    write_json(run_dir / "narration-manifest.json", manifest)
+    manifest["subtitle_paths"] = write_default_subtitle_assets(
+        shotlist_path=shotlist_path,
+        narration_manifest_path=run_dir / "narration-manifest.json",
+        output_dir=run_dir,
+        default_offset_ms=default_offset_ms,
+    )
     write_json(run_dir / "narration-manifest.json", manifest)
     return manifest
 

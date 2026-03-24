@@ -15,6 +15,7 @@ from .openai_videos import OpenAIAPIError, OpenAIVideosClient
 from .rendering import render_shots
 from .shotlist import load_shotlist, resolve_shot_order
 from .stitching import stitch_run
+from .subtitles import export_subtitles
 from .tts import synthesize_narration
 
 
@@ -143,9 +144,14 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--stitch-output", help="Optional output video path to stitch completed shot videos after rendering.")
     render_parser.add_argument("--stitch-overwrite", action="store_true", help="Allow overwriting an existing stitched output.")
     render_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched output.")
+    render_parser.add_argument("--background-music", help="Optional background music file to mix into the stitched output.")
+    render_parser.add_argument("--subtitle-file", help="Optional SRT or VTT subtitle file to embed into the stitched output.")
+    render_parser.add_argument("--subtitle-language", default="eng", help="Subtitle language tag for the embedded subtitle track.")
     render_parser.add_argument("--clip-audio-volume", type=float, help="Mix level for original clip audio when narration is present.")
     render_parser.add_argument("--narration-volume", type=float, help="Mix level for narration audio.")
+    render_parser.add_argument("--music-volume", type=float, help="Mix level for background music.")
     render_parser.add_argument("--mute-clip-audio", action="store_true", help="Mute original clip audio when mixing narration.")
+    render_parser.add_argument("--no-music-ducking", action="store_true", help="Do not duck background music under narration.")
 
     character_parser = subparsers.add_parser("create-character", help="Create a reusable character from a reference video.")
     character_parser.add_argument("--video", required=True, help="Absolute or relative path to a reference video file.")
@@ -170,14 +176,27 @@ def build_parser() -> argparse.ArgumentParser:
     synth_parser.add_argument("--response-format", choices=["mp3", "wav", "opus", "aac", "flac", "pcm"], help="Override TTS response format.")
     synth_parser.add_argument("--default-offset-ms", type=int, help="Fallback narration offset when a shot does not define one.")
 
+    subtitle_parser = subparsers.add_parser("export-subtitles", help="Export SRT, VTT, or JSON subtitles from a shot list.")
+    subtitle_parser.add_argument("--shotlist", required=True, help="Shot list JSON path.")
+    subtitle_parser.add_argument("--output", required=True, help="Output subtitle path.")
+    subtitle_parser.add_argument("--format", choices=["srt", "vtt", "json"], help="Override subtitle format.")
+    subtitle_parser.add_argument("--narration-manifest", help="Optional narration-manifest.json for precise cue timing.")
+    subtitle_parser.add_argument("--default-offset-ms", type=int, help="Fallback narration offset when a shot does not define one.")
+    subtitle_parser.add_argument("--max-words-per-cue", type=int, default=8, help="Maximum words to keep in a single subtitle cue.")
+
     stitch_parser = subparsers.add_parser("stitch-run", help="Combine completed shot videos from a render run into one video.")
     stitch_parser.add_argument("--run-dir", required=True, help="Render run directory containing run-manifest.json.")
     stitch_parser.add_argument("--output", required=True, help="Output stitched video path.")
     stitch_parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing output file.")
     stitch_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched video.")
+    stitch_parser.add_argument("--background-music", help="Optional background music file to mix into the stitched video.")
+    stitch_parser.add_argument("--subtitle-file", help="Optional SRT or VTT subtitle file to embed into the stitched video.")
+    stitch_parser.add_argument("--subtitle-language", default="eng", help="Subtitle language tag for the embedded subtitle track.")
     stitch_parser.add_argument("--clip-audio-volume", type=float, help="Mix level for original clip audio when narration is present.")
     stitch_parser.add_argument("--narration-volume", type=float, help="Mix level for narration audio.")
+    stitch_parser.add_argument("--music-volume", type=float, help="Mix level for background music.")
     stitch_parser.add_argument("--mute-clip-audio", action="store_true", help="Mute original clip audio when mixing narration.")
+    stitch_parser.add_argument("--no-music-ducking", action="store_true", help="Do not duck background music under narration.")
 
     return parser
 
@@ -204,6 +223,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return cmd_export_narration(args)
         if args.command == "synthesize-narration":
             return cmd_synthesize_narration(args)
+        if args.command == "export-subtitles":
+            return cmd_export_subtitles(args)
         if args.command == "stitch-run":
             return cmd_stitch_run(args)
     except (OpenAIAPIError, TimeoutError, ValueError, FileNotFoundError) as error:
@@ -298,8 +319,13 @@ def cmd_render_shotlist(args: argparse.Namespace) -> int:
                 output_path=Path(args.stitch_output).resolve(),
                 overwrite=bool(args.stitch_overwrite),
                 narration_audio_path=Path(args.narration_audio).resolve() if args.narration_audio else None,
+                background_music_path=Path(args.background_music).resolve() if args.background_music else None,
+                subtitle_path=Path(args.subtitle_file).resolve() if args.subtitle_file else None,
+                subtitle_language=args.subtitle_language,
                 clip_audio_volume=0.0 if args.mute_clip_audio else args.clip_audio_volume,
                 narration_volume=args.narration_volume,
+                music_volume=args.music_volume,
+                duck_music_under_narration=not bool(args.no_music_ducking),
             )
             print(f"Wrote stitched video: {stitch_manifest['output_path']}")
     return 0
@@ -364,6 +390,24 @@ def cmd_synthesize_narration(args: argparse.Namespace) -> int:
     )
     print(f"Wrote narration manifest: {Path(args.output_dir).resolve() / 'narration-manifest.json'}")
     print(f"Wrote narration audio: {manifest['master_audio_path']}")
+    if manifest.get("subtitle_paths"):
+        print(f"Wrote subtitles: {manifest['subtitle_paths']['srt']}")
+    return 0
+
+
+def cmd_export_subtitles(args: argparse.Namespace) -> int:
+    output_path = Path(args.output).resolve()
+    default_offset_ms = args.default_offset_ms or int(os.getenv("STORYBOOK_NARRATION_OFFSET_MS", "500"))
+    subtitle_plan = export_subtitles(
+        shotlist_path=Path(args.shotlist).resolve(),
+        output_path=output_path,
+        output_format=args.format,
+        narration_manifest_path=Path(args.narration_manifest).resolve() if args.narration_manifest else None,
+        default_offset_ms=default_offset_ms,
+        max_words_per_cue=max(1, int(args.max_words_per_cue or 8)),
+    )
+    print(f"Wrote subtitles: {output_path}")
+    print(f"Cue count: {subtitle_plan['cue_count']}")
     return 0
 
 
@@ -373,8 +417,13 @@ def cmd_stitch_run(args: argparse.Namespace) -> int:
         output_path=Path(args.output).resolve(),
         overwrite=bool(args.overwrite),
         narration_audio_path=Path(args.narration_audio).resolve() if args.narration_audio else None,
+        background_music_path=Path(args.background_music).resolve() if args.background_music else None,
+        subtitle_path=Path(args.subtitle_file).resolve() if args.subtitle_file else None,
+        subtitle_language=args.subtitle_language,
         clip_audio_volume=0.0 if args.mute_clip_audio else args.clip_audio_volume,
         narration_volume=args.narration_volume,
+        music_volume=args.music_volume,
+        duck_music_under_narration=not bool(args.no_music_ducking),
     )
     print(f"Wrote stitched video: {stitch_manifest['output_path']}")
     return 0

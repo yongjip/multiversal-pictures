@@ -31,6 +31,7 @@ Set `OPENAI_API_KEY` in `/Users/yongjip/Projects/potato-king/.env`.
 - `generate-shotlist`: story prompt -> story brief -> shotlist JSON
 - `export-narration`: shotlist JSON -> narration script
 - `synthesize-narration`: shotlist JSON -> narration audio track
+- `export-subtitles`: shotlist or narration timing -> SRT/VTT/JSON subtitles
 - `render-shotlist`: shotlist JSON -> rendered video clips
 - `create-character`: reference video -> reusable character ID
 
@@ -54,6 +55,13 @@ multiversal-pictures export-narration \
 multiversal-pictures synthesize-narration \
   --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
   --output-dir /Users/yongjip/Projects/potato-king/runs/panda_story/narration
+```
+
+```bash
+multiversal-pictures export-subtitles \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --narration-manifest /Users/yongjip/Projects/potato-king/runs/panda_story/narration/narration-manifest.json \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story/narration/captions.srt
 ```
 
 ```bash
@@ -83,6 +91,8 @@ multiversal-pictures stitch-run \
   --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story \
   --output /Users/yongjip/Projects/potato-king/runs/panda_story/story-with-narration.mp4 \
   --narration-audio /Users/yongjip/Projects/potato-king/runs/panda_story/narration/narration.wav \
+  --background-music /absolute/path/to/music.wav \
+  --subtitle-file /Users/yongjip/Projects/potato-king/runs/panda_story/narration/captions.srt \
   --mute-clip-audio \
   --overwrite
 ```
@@ -95,4 +105,6 @@ multiversal-pictures stitch-run \
 - narration is planned per shot and exported for TTS or human voiceover
 - shots can render concurrently and then be stitched into one master video
 - stitched masters default to narration-first audio; clip audio can be added back only if needed
+- background music can be looped and automatically ducked under narration
+- subtitle sidecars can be exported from narration timing and embedded into the master MP4
 - this avoids unstable lip-sync and keeps children’s-story pacing under tighter control

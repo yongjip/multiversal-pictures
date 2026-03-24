@@ -32,7 +32,11 @@ flowchart LR
   - produces a clean handoff for TTS or human voice recording
 - `Narration Synthesis`
   - generates per-shot narration audio with OpenAI TTS
-  - aligns each line to shot timing and builds one master narration track
+  - aligns each line to shot timing, builds one master narration track, and writes subtitle sidecars
+- `Final Edit`
+  - can mix narration, optional background music, and optional clip ambience
+  - ducks music under narration for cleaner storybook audio
+  - can embed subtitle tracks into the stitched master
 - `Render Agent`
   - executes the shot list with the OpenAI Videos API
   - polls job status and downloads result assets
@@ -60,11 +64,12 @@ flowchart LR
 4. run `export-narration`
 5. review narration timing and shot pacing together
 6. run `synthesize-narration`
-7. render one shot first
-8. fix prompt or shot fields if needed
-9. render the full sequence, optionally in parallel
-10. stitch completed clips into one master video, optionally with narration audio
-11. use `edit` or `extend` for problem shots
+7. export or inspect subtitles if needed
+8. render one shot first
+9. fix prompt or shot fields if needed
+10. render the full sequence, optionally in parallel
+11. stitch completed clips into one master video, optionally with narration audio and subtitles
+12. use `edit` or `extend` for problem shots
 
 ## Commands
 
@@ -99,6 +104,15 @@ Generate narration audio:
 multiversal-pictures synthesize-narration \
   --shotlist examples/panda_story_generated.json \
   --output-dir runs/panda_story/narration
+```
+
+Export subtitles:
+
+```bash
+multiversal-pictures export-subtitles \
+  --shotlist examples/panda_story_generated.json \
+  --narration-manifest runs/panda_story/narration/narration-manifest.json \
+  --output runs/panda_story/narration/captions.srt
 ```
 
 Render the generated shot list:
@@ -136,6 +150,9 @@ multiversal-pictures stitch-run \
   --run-dir runs/panda_story \
   --output runs/panda_story/story-with-narration.mp4 \
   --narration-audio runs/panda_story/narration/narration.wav \
+  --background-music /absolute/path/to/music.wav \
+  --subtitle-file runs/panda_story/narration/captions.srt \
+  --mute-clip-audio \
   --overwrite
 ```
 
