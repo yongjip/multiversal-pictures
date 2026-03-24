@@ -22,6 +22,7 @@ class OpenAIResponsesClient:
         model: str,
         instructions: str,
         input_messages: List[Dict[str, Any]],
+        schema_name: str,
         schema: Dict[str, Any],
         reasoning_effort: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -32,6 +33,7 @@ class OpenAIResponsesClient:
             "text": {
                 "format": {
                     "type": "json_schema",
+                    "name": schema_name,
                     "strict": True,
                     "schema": schema,
                 }

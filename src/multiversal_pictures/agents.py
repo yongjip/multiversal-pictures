@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 from .files import utc_timestamp, write_json
 from .openai_responses import OpenAIResponsesClient, extract_response_json
+from .shotlist import normalize_generated_shotlist
 
 
 @dataclass
@@ -19,6 +20,7 @@ class StoryAgentConfig:
     visual_style: str
     shot_count: int
     model: str
+    video_model: str
     reasoning_effort: Optional[str]
     size: str
     seconds: str
@@ -39,6 +41,7 @@ class StoryToShotlistAgent:
             "generated_at": utc_timestamp(),
             "agent": "story-to-shotlist",
             "model": config.model,
+            "video_model": config.video_model,
             "reasoning_effort": config.reasoning_effort,
             "story_brief_request": story_brief_request,
             "shotlist_request_template": shotlist_request,
@@ -59,6 +62,7 @@ class StoryToShotlistAgent:
             model=config.model,
             instructions=story_brief_request["instructions"],
             input_messages=story_brief_request["input"],
+            schema_name="story_brief",
             schema=_story_brief_schema(),
             reasoning_effort=config.reasoning_effort,
         )
@@ -80,10 +84,18 @@ class StoryToShotlistAgent:
             model=config.model,
             instructions=shotlist_request["instructions"],
             input_messages=shotlist_request["input"],
+            schema_name="render_shotlist",
             schema=_shotlist_schema(),
             reasoning_effort=config.reasoning_effort,
         )
         shotlist = extract_response_json(shotlist_response)
+        shotlist = normalize_generated_shotlist(
+            shotlist,
+            video_model=config.video_model,
+            size=config.size,
+            seconds=config.seconds,
+            download_variants=["video", "thumbnail"],
+        )
 
         trace["story_brief_response"] = story_brief_response
         trace["shotlist_request"] = shotlist_request
@@ -137,7 +149,8 @@ class StoryToShotlistAgent:
         )
         planner_prompt = (
             "Create the final shot list. "
-            f"Use default model {config.model}, size {config.size}, and seconds {config.seconds} unless a shot clearly needs an override. "
+            f"Use default video model {config.video_model}, size {config.size}, and seconds {config.seconds} unless a shot clearly needs an override. "
+            "Valid download variants are video, thumbnail, and spritesheet. "
             f"Generate exactly {config.shot_count} shots unless the brief clearly requires one extra closing beat. "
             "Include continuity notes in the project block and make sure each shot has strong shot_type, subject, action, setting, lighting, camera_motion, and mood fields."
         )

@@ -3,5 +3,17 @@
 runs/
 __pycache__/
 *.pyc
+*.pyo
 .idea/
+.DS_Store
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+examples/*.agent-trace.json
+examples/*.story-brief.json
+examples/*_generated.json
 src/**/__pycache__/

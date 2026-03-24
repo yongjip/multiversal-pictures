@@ -66,10 +66,14 @@ def build_shot_request(
 def _normalize_characters(value: Any) -> List[Dict[str, str]]:
     result: List[Dict[str, str]] = []
     for item in value:
+        character_id = None
         if isinstance(item, str) and item.strip():
-            result.append({"id": item.strip()})
+            character_id = item.strip()
         elif isinstance(item, dict) and item.get("id"):
-            result.append({"id": str(item["id"]).strip()})
+            character_id = str(item["id"]).strip()
+
+        if character_id and character_id.startswith("char_"):
+            result.append({"id": character_id})
     return result
 
 
@@ -107,3 +111,34 @@ def preferred_variants(project: Dict[str, Any], shot: Dict[str, Any], override: 
         return [item.strip() for item in override.split(",") if item.strip()]
     configured = shot.get("download_variants") or project.get("download_variants") or ["video"]
     return [str(item).strip() for item in configured if str(item).strip()]
+
+
+def normalize_generated_shotlist(
+    document: Dict[str, Any],
+    *,
+    video_model: str,
+    size: str,
+    seconds: str,
+    download_variants: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    normalized = dict(document)
+    project = dict(normalized.get("project") or {})
+
+    project["model"] = video_model
+    project["size"] = str(project.get("size") or size)
+    project["seconds"] = str(project.get("seconds") or seconds)
+    project["download_variants"] = _normalize_variants(
+        project.get("download_variants"),
+        default=download_variants or ["video"],
+    )
+
+    normalized["project"] = project
+    normalized["shots"] = list(normalized.get("shots") or [])
+    return normalized
+
+
+def _normalize_variants(value: Any, *, default: List[str]) -> List[str]:
+    allowed = {"video", "thumbnail", "spritesheet"}
+    items = value if isinstance(value, list) else []
+    normalized = [str(item).strip() for item in items if str(item).strip() in allowed]
+    return normalized or list(default)

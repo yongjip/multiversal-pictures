@@ -170,6 +170,7 @@ def cmd_generate_shotlist(args: argparse.Namespace) -> int:
     trace_output_path = Path(args.trace_output).resolve() if args.trace_output else output_path.with_name(f"{output_path.stem}.agent-trace.json")
     model = args.model or default_agent_model()
     reasoning_effort = args.reasoning_effort or default_agent_reasoning_effort()
+    video_model = os.getenv("OPENAI_VIDEO_MODEL", "sora-2-pro")
     size = args.size or os.getenv("OPENAI_VIDEO_SIZE", "1280x720")
     seconds = args.seconds or os.getenv("OPENAI_VIDEO_SECONDS", "8")
 
@@ -184,6 +185,7 @@ def cmd_generate_shotlist(args: argparse.Namespace) -> int:
             visual_style=args.style,
             shot_count=max(1, args.shots),
             model=model,
+            video_model=video_model,
             reasoning_effort=reasoning_effort,
             size=size,
             seconds=seconds,
