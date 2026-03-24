@@ -78,6 +78,7 @@ Generate a shot list from a story prompt:
 ```bash
 multiversal-pictures generate-shotlist \
   --prompt-file examples/panda_story_prompt.txt \
+  --output-preset storybook-vertical \
   --output examples/panda_story_generated.json
 ```
 
@@ -129,6 +130,7 @@ Render in parallel and stitch automatically:
 multiversal-pictures render-shotlist \
   --shotlist examples/panda_story_generated.json \
   --output runs/panda_story \
+  --output-preset storybook-vertical \
   --jobs 4 \
   --stitch-output runs/panda_story/story.mp4 \
   --stitch-overwrite
@@ -175,6 +177,8 @@ multiversal-pictures stitch-run \
 Preset options for burned subtitles: `storybook`, `large`, `minimal`, `high-contrast`.
 Layout options for burned subtitles: `widescreen`, `vertical`, `auto`.
 Burned subtitle presets auto-scale to the output resolution; use `STORYBOOK_SUBTITLE_FONT_SCALE` and `STORYBOOK_SUBTITLE_MARGIN_SCALE` if you need global tuning.
+Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, `storybook-short-vertical`.
+When selected, an output preset overrides the project-level default render size, clip duration, framing guidance, and subtitle defaults.
 
 ## OpenAI APIs used
 

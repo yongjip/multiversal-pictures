@@ -31,6 +31,7 @@ def build_shot_prompt(project: Dict[str, Any], shot: Dict[str, Any]) -> str:
     style_notes = shot.get("style_notes") or project.get("style_notes")
     continuity_notes = shot.get("consistency_notes") or project.get("consistency_notes")
     audio_notes = shot.get("audio_notes") or project.get("audio_notes")
+    format_guidance = shot.get("format_guidance") or project.get("format_guidance")
 
     constraints: List[str] = []
     constraints.extend(project.get("constraints") or [])
@@ -53,6 +54,9 @@ def build_shot_prompt(project: Dict[str, Any], shot: Dict[str, Any]) -> str:
 
     if continuity_notes:
         sentences.append(f"Continuity: {continuity_notes}.")
+
+    if format_guidance:
+        sentences.append(f"Framing guidance: {format_guidance}.")
 
     if audio_notes:
         sentences.append(f"Audio direction: {audio_notes}.")

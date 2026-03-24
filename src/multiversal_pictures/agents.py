@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 from .files import utc_timestamp, write_json
 from .openai_responses import OpenAIResponsesClient, extract_response_json
+from .output_presets import resolve_output_preset
 from .shotlist import normalize_generated_shotlist
 
 
@@ -24,6 +25,7 @@ class StoryAgentConfig:
     reasoning_effort: Optional[str]
     size: str
     seconds: str
+    output_preset: Optional[str] = None
     dry_run: bool = False
     brief_output_path: Optional[Path] = None
     trace_output_path: Optional[Path] = None
@@ -89,12 +91,17 @@ class StoryToShotlistAgent:
             reasoning_effort=config.reasoning_effort,
         )
         shotlist = extract_response_json(shotlist_response)
+        resolved_output_preset = resolve_output_preset(config.output_preset) if config.output_preset else None
         shotlist = normalize_generated_shotlist(
             shotlist,
             video_model=config.video_model,
             size=config.size,
             seconds=config.seconds,
             download_variants=["video", "thumbnail"],
+            output_preset=config.output_preset,
+            subtitle_preset=resolved_output_preset.get("subtitle_preset") if resolved_output_preset else None,
+            subtitle_layout=resolved_output_preset.get("subtitle_layout") if resolved_output_preset else None,
+            format_guidance=resolved_output_preset.get("format_guidance") if resolved_output_preset else None,
         )
 
         trace["story_brief_response"] = story_brief_response
@@ -158,6 +165,9 @@ class StoryToShotlistAgent:
             "For every shot include a short narration_line, a narration_cue describing when the line lands, a narration_offset_ms integer, and sfx_notes for the sound mix. "
             "Do not rely on visible talking or lip-synced dialogue."
         )
+        if config.output_preset:
+            preset = resolve_output_preset(config.output_preset)
+            planner_prompt += f" Output preset: {preset['name']}. {preset['format_guidance']}"
         return {
             "instructions": instructions,
             "input": [

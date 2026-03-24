@@ -35,6 +35,9 @@ Set `OPENAI_API_KEY` in `/Users/yongjip/Projects/potato-king/.env`.
 - `render-shotlist`: shotlist JSON -> rendered video clips
 - `create-character`: reference video -> reusable character ID
 
+Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, `storybook-short-vertical`
+When a preset is selected, it overrides the project-level default `size`, `seconds`, framing guidance, and subtitle defaults.
+
 Architecture notes: `/Users/yongjip/Projects/potato-king/docs/agent-workflow.md:1`
 
 ## Run
@@ -42,6 +45,7 @@ Architecture notes: `/Users/yongjip/Projects/potato-king/docs/agent-workflow.md:
 ```bash
 multiversal-pictures generate-shotlist \
   --prompt-file /Users/yongjip/Projects/potato-king/examples/panda_story_prompt.txt \
+  --output-preset storybook-vertical \
   --output /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json
 ```
 
@@ -74,6 +78,7 @@ multiversal-pictures render-shotlist \
 multiversal-pictures render-shotlist \
   --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
   --output /Users/yongjip/Projects/potato-king/runs/panda_story \
+  --output-preset storybook-vertical \
   --jobs 4 \
   --stitch-output /Users/yongjip/Projects/potato-king/runs/panda_story/story.mp4 \
   --stitch-overwrite
@@ -124,4 +129,5 @@ multiversal-pictures stitch-run \
 - burned subtitles support presets: `storybook`, `large`, `minimal`, `high-contrast`
 - burned subtitle layouts support `widescreen`, `vertical`, and `auto`
 - burned subtitle presets auto-scale font size, outline, and bottom margin to the output resolution
+- output presets bundle render size, clip duration, framing guidance, and subtitle defaults for landscape vs 9:16 delivery
 - this avoids unstable lip-sync and keeps children’s-story pacing under tighter control

@@ -36,6 +36,7 @@ def stitch_run(
 
     run_manifest = read_json(run_manifest_path)
     shotlist = load_shotlist(shotlist_path)
+    project = dict(shotlist.get("project") or {})
     ordered_ids = [shot["id"] for shot in resolve_shot_order(shotlist["shots"])]
     manifests_by_id = {str(shot.get("id")): shot for shot in run_manifest.get("shots") or []}
     video_paths = _ordered_video_paths(ordered_ids, manifests_by_id)
@@ -81,8 +82,8 @@ def stitch_run(
                 subtitle_path=subtitle_path,
                 output_path=output_path,
                 overwrite=overwrite,
-                preset=subtitle_preset or os.getenv("STORYBOOK_SUBTITLE_PRESET", "storybook"),
-                layout=subtitle_layout or os.getenv("STORYBOOK_SUBTITLE_LAYOUT", "auto"),
+                preset=subtitle_preset or str(project.get("subtitle_preset") or os.getenv("STORYBOOK_SUBTITLE_PRESET", "storybook")),
+                layout=subtitle_layout or str(project.get("subtitle_layout") or os.getenv("STORYBOOK_SUBTITLE_LAYOUT", "auto")),
                 style=subtitle_style,
             )
         else:

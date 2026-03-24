@@ -13,6 +13,7 @@ from .openai_responses import OpenAIResponsesClient
 from .openai_speech import OpenAISpeechClient
 from .openai_videos import OpenAIAPIError, OpenAIVideosClient
 from .media import subtitle_layout_names, subtitle_preset_names
+from .output_presets import default_output_preset_name, output_preset_names, preset_project_overrides, resolve_output_preset
 from .rendering import render_shots
 from .shotlist import load_shotlist, resolve_shot_order
 from .stitching import stitch_run
@@ -23,6 +24,7 @@ from .tts import synthesize_narration
 SAMPLE_SHOTLIST = {
     "project": {
         "title": "Pobi Bamboo Breakfast",
+        "output_preset": "storybook-landscape",
         "model": "sora-2-pro",
         "size": "1280x720",
         "seconds": "8",
@@ -128,6 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
     generate_parser.add_argument("--shots", type=int, default=4, help="Target shot count.")
     generate_parser.add_argument("--model", help="Override the planning model.")
     generate_parser.add_argument("--reasoning-effort", choices=["minimal", "low", "medium", "high"], help="Override reasoning effort for the planning model.")
+    generate_parser.add_argument("--output-preset", choices=output_preset_names(), help="Preset for render size, duration, and subtitle defaults.")
     generate_parser.add_argument("--size", help="Default output size to write into the shot list.")
     generate_parser.add_argument("--seconds", help="Default clip length to write into the shot list.")
     generate_parser.add_argument("--dry-run", action="store_true", help="Write the request trace without calling the API.")
@@ -142,6 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--jobs", type=int, default=1, help="Number of shots to render concurrently.")
     render_parser.add_argument("--poll-interval", type=int, help="Polling interval seconds.")
     render_parser.add_argument("--timeout-seconds", type=int, help="Maximum wait time per shot.")
+    render_parser.add_argument("--output-preset", choices=output_preset_names(), help="Preset for render size, duration, and subtitle defaults.")
     render_parser.add_argument("--stitch-output", help="Optional output video path to stitch completed shot videos after rendering.")
     render_parser.add_argument("--stitch-overwrite", action="store_true", help="Allow overwriting an existing stitched output.")
     render_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched output.")
@@ -193,6 +197,7 @@ def build_parser() -> argparse.ArgumentParser:
     stitch_parser.add_argument("--run-dir", required=True, help="Render run directory containing run-manifest.json.")
     stitch_parser.add_argument("--output", required=True, help="Output stitched video path.")
     stitch_parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing output file.")
+    stitch_parser.add_argument("--output-preset", choices=output_preset_names(), help="Preset for subtitle defaults on stitched outputs.")
     stitch_parser.add_argument("--narration-audio", help="Optional narration audio file to mix into the stitched video.")
     stitch_parser.add_argument("--background-music", help="Optional background music file to mix into the stitched video.")
     stitch_parser.add_argument("--subtitle-file", help="Optional SRT or VTT subtitle file to embed or burn into the stitched video.")
@@ -259,8 +264,9 @@ def cmd_generate_shotlist(args: argparse.Namespace) -> int:
     model = args.model or default_agent_model()
     reasoning_effort = args.reasoning_effort or default_agent_reasoning_effort()
     video_model = os.getenv("OPENAI_VIDEO_MODEL", "sora-2-pro")
-    size = args.size or os.getenv("OPENAI_VIDEO_SIZE", "1280x720")
-    seconds = args.seconds or os.getenv("OPENAI_VIDEO_SECONDS", "8")
+    resolved_output_preset = resolve_output_preset(args.output_preset or default_output_preset_name())
+    size = args.size or (resolved_output_preset["size"] if resolved_output_preset else os.getenv("OPENAI_VIDEO_SIZE", "1280x720"))
+    seconds = args.seconds or (resolved_output_preset["seconds"] if resolved_output_preset else os.getenv("OPENAI_VIDEO_SECONDS", "8"))
 
     client = None if args.dry_run else _responses_client_from_env()
     agent = StoryToShotlistAgent(client)
@@ -277,6 +283,7 @@ def cmd_generate_shotlist(args: argparse.Namespace) -> int:
             reasoning_effort=reasoning_effort,
             size=size,
             seconds=seconds,
+            output_preset=resolved_output_preset["name"] if resolved_output_preset else None,
             dry_run=bool(args.dry_run),
             brief_output_path=brief_output_path,
             trace_output_path=trace_output_path,
@@ -297,7 +304,11 @@ def cmd_render_shotlist(args: argparse.Namespace) -> int:
     shotlist_path = Path(args.shotlist).resolve()
     output_dir = Path(args.output).resolve()
     shotlist = load_shotlist(shotlist_path)
-    project = dict(shotlist.get("project") or {})
+    base_project = dict(shotlist.get("project") or {})
+    resolved_output_preset = resolve_output_preset(
+        args.output_preset or base_project.get("output_preset") or default_output_preset_name()
+    )
+    project = preset_project_overrides(project=base_project, preset=resolved_output_preset)
     ordered_shots = resolve_shot_order(shotlist["shots"])
     selected_ids = _selected_ids(args.only)
     client = None if args.dry_run else _client_from_env(args.timeout_seconds)
@@ -332,8 +343,8 @@ def cmd_render_shotlist(args: argparse.Namespace) -> int:
                 subtitle_path=Path(args.subtitle_file).resolve() if args.subtitle_file else None,
                 subtitle_language=args.subtitle_language,
                 burn_subtitles=bool(args.burn_subtitles),
-                subtitle_preset=args.subtitle_preset,
-                subtitle_layout=args.subtitle_layout,
+                subtitle_preset=args.subtitle_preset or str(project.get("subtitle_preset") or (resolved_output_preset["subtitle_preset"] if resolved_output_preset else "")) or None,
+                subtitle_layout=args.subtitle_layout or str(project.get("subtitle_layout") or (resolved_output_preset["subtitle_layout"] if resolved_output_preset else "")) or None,
                 subtitle_style=args.subtitle_style,
                 clip_audio_volume=0.0 if args.mute_clip_audio else args.clip_audio_volume,
                 narration_volume=args.narration_volume,
@@ -425,6 +436,7 @@ def cmd_export_subtitles(args: argparse.Namespace) -> int:
 
 
 def cmd_stitch_run(args: argparse.Namespace) -> int:
+    resolved_output_preset = resolve_output_preset(args.output_preset or default_output_preset_name())
     stitch_manifest = stitch_run(
         run_dir=Path(args.run_dir).resolve(),
         output_path=Path(args.output).resolve(),
@@ -434,8 +446,8 @@ def cmd_stitch_run(args: argparse.Namespace) -> int:
         subtitle_path=Path(args.subtitle_file).resolve() if args.subtitle_file else None,
         subtitle_language=args.subtitle_language,
         burn_subtitles=bool(args.burn_subtitles),
-        subtitle_preset=args.subtitle_preset,
-        subtitle_layout=args.subtitle_layout,
+        subtitle_preset=args.subtitle_preset or (resolved_output_preset["subtitle_preset"] if resolved_output_preset else None),
+        subtitle_layout=args.subtitle_layout or (resolved_output_preset["subtitle_layout"] if resolved_output_preset else None),
         subtitle_style=args.subtitle_style,
         clip_audio_volume=0.0 if args.mute_clip_audio else args.clip_audio_volume,
         narration_volume=args.narration_volume,

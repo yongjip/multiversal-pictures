@@ -1,6 +1,7 @@
 {
   "project": {
     "title": "Pobi Bamboo Breakfast",
+    "output_preset": "storybook-landscape",
     "model": "sora-2-pro",
     "size": "1280x720",
     "seconds": "8",

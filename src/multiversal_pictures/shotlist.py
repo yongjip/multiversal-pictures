@@ -120,13 +120,25 @@ def normalize_generated_shotlist(
     size: str,
     seconds: str,
     download_variants: Optional[List[str]] = None,
+    output_preset: Optional[str] = None,
+    subtitle_preset: Optional[str] = None,
+    subtitle_layout: Optional[str] = None,
+    format_guidance: Optional[str] = None,
 ) -> Dict[str, Any]:
     normalized = dict(document)
     project = dict(normalized.get("project") or {})
 
     project["model"] = video_model
-    project["size"] = str(project.get("size") or size)
-    project["seconds"] = str(project.get("seconds") or seconds)
+    project["size"] = str(size)
+    project["seconds"] = str(seconds)
+    if output_preset:
+        project["output_preset"] = output_preset
+    if subtitle_preset and not project.get("subtitle_preset"):
+        project["subtitle_preset"] = subtitle_preset
+    if subtitle_layout and not project.get("subtitle_layout"):
+        project["subtitle_layout"] = subtitle_layout
+    if format_guidance and not project.get("format_guidance"):
+        project["format_guidance"] = format_guidance
     project["download_variants"] = _normalize_variants(
         project.get("download_variants"),
         default=download_variants or ["video"],
