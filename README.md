@@ -59,6 +59,7 @@ Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, 
 When a preset is selected, it overrides the project-level default `size`, `seconds`, framing guidance, and subtitle defaults.
 
 Architecture notes: `/Users/yongjip/Projects/potato-king/docs/agent-workflow.md:1`
+Topic research playbook: `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`
 
 ## Run
 

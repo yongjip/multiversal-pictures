@@ -2,6 +2,8 @@
 
 `Multiversal Pictures` uses a staged agent workflow instead of one giant prompt.
 
+For upstream topic selection and downstream packaging/distribution, use the companion playbook at `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`.
+
 ```mermaid
 flowchart LR
     U["User Prompt"] --> S["Story Agent"]
@@ -92,6 +94,22 @@ flowchart LR
 12. render the full sequence, optionally in parallel
 13. stitch completed clips into one master video, optionally with narration audio and subtitles
 14. use `edit` or `extend` for problem shots
+
+## Topic-to-Publish Loop
+
+When the goal is full automation from idea to distribution, do not start from shot planning.
+
+Start from:
+
+1. research recent source material
+2. extract provocative but defensible claims
+3. reframe the claim for a broad English-speaking audience
+4. choose the most clickable defensible angle
+5. package title, thumbnail, and script before production
+6. hand off the chosen angle into prompt -> shotlist -> render -> review -> stitch
+7. prepare upload metadata from the same chosen angle
+
+The detailed instructions, scoring rubric, and output contract for that upstream stage live in `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`.
 
 ## Commands
 
