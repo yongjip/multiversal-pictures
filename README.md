@@ -11,8 +11,14 @@ This repository is focused on a Python-based OpenAI workflow for:
 
 ## Start
 
+Set your project root once so commands are portable:
+
 ```bash
-cd /Users/yongjip/Projects/potato-king
+PROJECT_ROOT="$(pwd)"
+```
+
+```bash
+cd "$PROJECT_ROOT"
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -e .
@@ -21,10 +27,10 @@ python3 -m pip install -e .
 ## Configure
 
 ```bash
-cp /Users/yongjip/Projects/potato-king/.env.example /Users/yongjip/Projects/potato-king/.env
+cp "$PROJECT_ROOT/.env.example" "$PROJECT_ROOT/.env"
 ```
 
-Set `OPENAI_API_KEY` in `/Users/yongjip/Projects/potato-king/.env`.
+Set `OPENAI_API_KEY` in `"$PROJECT_ROOT/.env"`.
 
 To upload to YouTube, also enable the YouTube Data API v3 in Google Cloud, create an OAuth desktop client, and point `YOUTUBE_CLIENT_SECRETS_FILE` at the downloaded JSON file. The CLI stores the reusable OAuth token in `YOUTUBE_TOKEN_FILE` or defaults to `~/.multiversal-pictures/youtube-token.json`.
 
@@ -58,61 +64,87 @@ STORYBOOK_QA_BEST_OF=3
 Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, `storybook-short-vertical`, `storybook-pro-landscape`, `storybook-pro-vertical`
 When a preset is selected, it overrides the project-level default `size`, `seconds`, framing guidance, and subtitle defaults.
 
-Architecture notes: `/Users/yongjip/Projects/potato-king/docs/agent-workflow.md:1`
-Topic research playbook: `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`
+Architecture notes: `docs/agent-workflow.md`
+Topic research playbook: `docs/topic-research-playbook.md`
 
 ## Run
 
+If your primary goal is to run locally end-to-end (**generate -> render -> stitch -> upload**), start with this minimal flow:
+
+```bash
+# 1) Generate a shotlist from prompt
+multiversal-pictures generate-shotlist \
+  --prompt-file "$PROJECT_ROOT/examples/panda_story_prompt.txt" \
+  --output-preset storybook-vertical \
+  --output "$PROJECT_ROOT/examples/panda_story_generated.json"
+
+# 2) Produce the full run (narration + rendering + stitched video)
+multiversal-pictures produce \
+  --shotlist "$PROJECT_ROOT/examples/panda_story_generated.json" \
+  --output-preset storybook-vertical \
+  --output "$PROJECT_ROOT/runs/panda_story_vertical"
+
+# 3) Upload the finished run to YouTube
+multiversal-pictures upload-youtube \
+  --run-dir "$PROJECT_ROOT/runs/panda_story_vertical" \
+  --title "Pobi Bamboo Breakfast" \
+  --description "A short storybook video made with Multiversal Pictures." \
+  --tags panda,storybook,kids \
+  --privacy-status private
+```
+
+For quality-first runs, add `--with-anchors --with-review` to the `produce` step.
+
 ```bash
 multiversal-pictures generate-shotlist \
-  --prompt-file /Users/yongjip/Projects/potato-king/examples/panda_story_prompt.txt \
+  --prompt-file $PROJECT_ROOT/examples/panda_story_prompt.txt \
   --output-preset storybook-vertical \
-  --output /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json
+  --output $PROJECT_ROOT/examples/panda_story_generated.json
 ```
 
 ```bash
 multiversal-pictures produce \
-  --prompt-file /Users/yongjip/Projects/potato-king/examples/panda_story_prompt.txt \
+  --prompt-file $PROJECT_ROOT/examples/panda_story_prompt.txt \
   --output-preset storybook-vertical \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical
+  --output $PROJECT_ROOT/runs/panda_story_vertical
 ```
 
 ```bash
 multiversal-pictures generate-anchors \
-  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
-  --output-dir /Users/yongjip/Projects/potato-king/runs/panda_story_vertical/anchors \
-  --output-shotlist /Users/yongjip/Projects/potato-king/runs/panda_story_vertical/anchored-shotlist.json
+  --shotlist $PROJECT_ROOT/examples/panda_story_generated.json \
+  --output-dir $PROJECT_ROOT/runs/panda_story_vertical/anchors \
+  --output-shotlist $PROJECT_ROOT/runs/panda_story_vertical/anchored-shotlist.json
 ```
 
 ```bash
 multiversal-pictures produce \
-  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --shotlist $PROJECT_ROOT/examples/panda_story_generated.json \
   --output-preset storybook-vertical \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical
+  --output $PROJECT_ROOT/runs/panda_story_vertical
 ```
 
 ```bash
 multiversal-pictures produce \
-  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --shotlist $PROJECT_ROOT/examples/panda_story_generated.json \
   --output-preset storybook-pro-vertical \
   --with-anchors \
   --with-review \
   --review-best-of 3 \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story_pro_vertical
+  --output $PROJECT_ROOT/runs/panda_story_pro_vertical
 ```
 
 ```bash
 multiversal-pictures review-shots \
-  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story_pro_vertical \
+  --run-dir $PROJECT_ROOT/runs/panda_story_pro_vertical \
   --best-of 3 \
   --threshold 0.78
 ```
 
 ```bash
 multiversal-pictures produce \
-  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --shotlist $PROJECT_ROOT/examples/panda_story_generated.json \
   --output-preset storybook-vertical \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical \
+  --output $PROJECT_ROOT/runs/panda_story_vertical \
   --upload-youtube \
   --youtube-title "Pobi Bamboo Breakfast" \
   --youtube-description "A short storybook video made with Multiversal Pictures." \
@@ -122,64 +154,64 @@ multiversal-pictures produce \
 
 ```bash
 multiversal-pictures export-narration \
-  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story/narration.md
+  --shotlist $PROJECT_ROOT/examples/panda_story_generated.json \
+  --output $PROJECT_ROOT/runs/panda_story/narration.md
 ```
 
 ```bash
 multiversal-pictures synthesize-narration \
-  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
-  --output-dir /Users/yongjip/Projects/potato-king/runs/panda_story/narration
+  --shotlist $PROJECT_ROOT/examples/panda_story_generated.json \
+  --output-dir $PROJECT_ROOT/runs/panda_story/narration
 ```
 
 ```bash
 multiversal-pictures export-subtitles \
-  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
-  --narration-manifest /Users/yongjip/Projects/potato-king/runs/panda_story/narration/narration-manifest.json \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story/narration/captions.srt
+  --shotlist $PROJECT_ROOT/examples/panda_story_generated.json \
+  --narration-manifest $PROJECT_ROOT/runs/panda_story/narration/narration-manifest.json \
+  --output $PROJECT_ROOT/runs/panda_story/narration/captions.srt
 ```
 
 ```bash
 multiversal-pictures render-shotlist \
-  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story
+  --shotlist $PROJECT_ROOT/examples/panda_story_generated.json \
+  --output $PROJECT_ROOT/runs/panda_story
 ```
 
 ```bash
 multiversal-pictures render-shotlist \
-  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story \
+  --shotlist $PROJECT_ROOT/examples/panda_story_generated.json \
+  --output $PROJECT_ROOT/runs/panda_story \
   --output-preset storybook-vertical \
   --jobs 4 \
-  --stitch-output /Users/yongjip/Projects/potato-king/runs/panda_story/story.mp4 \
+  --stitch-output $PROJECT_ROOT/runs/panda_story/story.mp4 \
   --stitch-overwrite
 ```
 
 ```bash
 multiversal-pictures stitch-run \
-  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story/story.mp4 \
+  --run-dir $PROJECT_ROOT/runs/panda_story \
+  --output $PROJECT_ROOT/runs/panda_story/story.mp4 \
   --overwrite
 ```
 
 ```bash
 multiversal-pictures stitch-run \
-  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story/story-with-narration.mp4 \
-  --narration-audio /Users/yongjip/Projects/potato-king/runs/panda_story/narration/narration.wav \
+  --run-dir $PROJECT_ROOT/runs/panda_story \
+  --output $PROJECT_ROOT/runs/panda_story/story-with-narration.mp4 \
+  --narration-audio $PROJECT_ROOT/runs/panda_story/narration/narration.wav \
   --background-music /absolute/path/to/music.wav \
-  --subtitle-file /Users/yongjip/Projects/potato-king/runs/panda_story/narration/captions.srt \
+  --subtitle-file $PROJECT_ROOT/runs/panda_story/narration/captions.srt \
   --mute-clip-audio \
   --overwrite
 ```
 
 ```bash
 multiversal-pictures stitch-run \
-  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story \
-  --output /Users/yongjip/Projects/potato-king/runs/panda_story/story-with-burned-subtitles.mp4 \
-  --narration-audio /Users/yongjip/Projects/potato-king/runs/panda_story/narration/narration.wav \
+  --run-dir $PROJECT_ROOT/runs/panda_story \
+  --output $PROJECT_ROOT/runs/panda_story/story-with-burned-subtitles.mp4 \
+  --narration-audio $PROJECT_ROOT/runs/panda_story/narration/narration.wav \
   --background-music /absolute/path/to/music.wav \
-  --subtitle-file /Users/yongjip/Projects/potato-king/runs/panda_story/narration/captions.srt \
+  --subtitle-file $PROJECT_ROOT/runs/panda_story/narration/captions.srt \
   --burn-subtitles \
   --subtitle-preset large \
   --subtitle-layout auto \
@@ -189,7 +221,7 @@ multiversal-pictures stitch-run \
 
 ```bash
 multiversal-pictures upload-youtube \
-  --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story_vertical \
+  --run-dir $PROJECT_ROOT/runs/panda_story_vertical \
   --title "Pobi Bamboo Breakfast" \
   --description "A short storybook video made with Multiversal Pictures." \
   --tags panda,storybook,kids \
