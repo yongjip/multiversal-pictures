@@ -17,3 +17,4 @@ examples/*.agent-trace.json
 examples/*.story-brief.json
 examples/*_generated.json
 src/**/__pycache__/
+secrets/

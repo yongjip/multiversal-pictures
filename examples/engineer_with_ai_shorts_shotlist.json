@@ -1,0 +1,210 @@
+{
+  "project": {
+    "title": "Raw IQ Is No Longer Enough",
+    "output_preset": "storybook-pro-vertical",
+    "production_mode": "balanced",
+    "subtitle_position": "bottom_raised",
+    "model": "sora-2-pro",
+    "size": "1024x1792",
+    "seconds": "8",
+    "poll_interval_seconds": 10,
+    "download_variants": [
+      "video",
+      "thumbnail",
+      "spritesheet"
+    ],
+    "style_notes": "premium cinematic tech explainer, dark graphite environments, cool white and electric amber highlights, sleek motion-graphics energy, subtle particles, clean silhouettes, high contrast without readable UI text, visually expensive and modern",
+    "format_guidance": "Compose for premium 9:16 vertical framing. Keep the main subject large in the center third, preserve a raised lower subtitle-safe band, and avoid critical detail at the very top and bottom edges.",
+    "narration_style": "urgent, sharp, broad-audience English explainer with confident pacing",
+    "narration_notes": "Every line must be understood on first listen. Favor provocative phrasing over jargon, but keep the claims defensible and concise for short-form delivery.",
+    "consistency_notes": "Do not depict recognizable real people or logos. Use generic engineers, abstract AI agents, symbolic dashboards without readable text, and visual metaphors for leverage, speed, and competition. Keep the main engineer's silhouette, wardrobe, and proportions stable across shots.",
+    "constraints": [
+      "broad-audience tech explainer tone",
+      "no readable on-screen text inside generated visuals",
+      "no logos, no brand marks, no watermark",
+      "avoid uncanny or photoreal close human faces",
+      "keep motion clean, cinematic, and premium",
+      "preserve the raised lower subtitle-safe band"
+    ],
+    "audio_notes": "Minimal low synth pulse, restrained cinematic whooshes, subtle impacts, and airy ambience under external narration only.",
+    "characters": [
+      {
+        "id": "lead-engineer",
+        "name": "Lead Engineer",
+        "description": "a generic high-performing engineer in dark minimal clothing, clean silhouette, confident posture, and no recognizable celebrity likeness",
+        "continuity_rules": [
+          "keep the same dark minimal wardrobe across shots",
+          "preserve a clean centered silhouette and confident posture",
+          "avoid recognizable real-person likeness or brand-specific styling"
+        ]
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "rules-broken",
+      "title": "The old advantage breaks",
+      "mode": "generate",
+      "seconds": "4",
+      "size": "1024x1792",
+      "priority": "high",
+      "shot_type": "Hero close-up reveal",
+      "subject": "the lead engineer alone in a dark futuristic design studio",
+      "action": "studies complex floating systems alone as the room subtly dims and the feeling of certainty starts collapsing",
+      "setting": "dark graphite design studio with abstract architecture, suspended geometric forms, and premium atmospheric depth",
+      "lighting": "cool rim light with faint electric amber accents and controlled contrast",
+      "camera_motion": "slow push-in with a slight downward tilt as the room feels smaller",
+      "mood": "ominous realization, high-stakes tension",
+      "characters": [
+        {
+          "id": "lead-engineer"
+        }
+      ],
+      "start_frame": "one brilliant engineer stands alone in a large premium studio, surrounded by abstract technical forms that imply intelligence and mastery",
+      "end_frame": "the room closes in visually and the engineer suddenly feels isolated and vulnerable",
+      "narration_line": "The smartest engineer in the room may no longer win.",
+      "narration_cue": "land no longer win as the room visually tightens around the subject",
+      "narration_offset_ms": 300,
+      "sfx_notes": "low cinematic hum, faint tonal drop, subtle whoosh as the frame tightens",
+      "must_keep": [
+        "one dominant central subject",
+        "premium cinematic lighting",
+        "clean raised lower subtitle-safe band"
+      ],
+      "negative_constraints": [
+        "no readable UI text",
+        "no brand logos",
+        "no recognizable real-person likeness"
+      ]
+    },
+    {
+      "id": "ai-leverage",
+      "title": "AI leverage flips the race",
+      "mode": "generate",
+      "seconds": "8",
+      "size": "1024x1792",
+      "priority": "high",
+      "shot_type": "Competitive split-screen metaphor",
+      "subject": "two generic engineers, one alone and one amplified by AI assistance",
+      "action": "the AI-augmented engineer rapidly multiplies outputs and overtakes the lone expert in a clean symbolic race",
+      "setting": "sleek abstract competition space with layered workstations, progress shapes, and premium motion-graphics depth",
+      "lighting": "cool white on the lone side, brighter amber-white energetic glow on the AI-assisted side",
+      "camera_motion": "start centered, then drift toward the AI-assisted side as it surges ahead",
+      "mood": "shock, competitive imbalance, momentum shift",
+      "start_frame": "two engineers begin at similar starting points in a polished abstract work arena",
+      "end_frame": "the AI-assisted engineer clearly surges ahead while the lone expert falls behind",
+      "narration_line": "A mediocre engineer with AI can now outperform a genius without it.",
+      "narration_cue": "hit outperform as the AI-assisted side pulls decisively ahead",
+      "narration_offset_ms": 250,
+      "sfx_notes": "tight rhythmic pulses, layered whooshes, subtle acceleration sound on the winning side",
+      "must_keep": [
+        "clear visual contrast between solo work and AI leverage",
+        "strong central composition readable on mobile",
+        "clean raised lower subtitle-safe band"
+      ],
+      "negative_constraints": [
+        "no readable text overlays",
+        "no comedy styling",
+        "no clutter in the lower center"
+      ]
+    },
+    {
+      "id": "hundred-agents",
+      "title": "One engineer becomes a command center",
+      "mode": "generate",
+      "seconds": "8",
+      "size": "1024x1792",
+      "priority": "high",
+      "shot_type": "Swarm expansion shot",
+      "subject": "the lead engineer orchestrating a rapidly multiplying swarm of AI agents",
+      "action": "translucent AI assistants branch outward to handle design, code, testing, planning, and simulation tasks in parallel",
+      "setting": "vertical command chamber made of holographic layers, luminous nodes, and flowing task pathways without readable text",
+      "lighting": "electric amber and cool white volumetric light with premium depth",
+      "camera_motion": "slow orbit around the engineer as the swarm expands into a towering halo",
+      "mood": "power, scale, future shock",
+      "characters": [
+        {
+          "id": "lead-engineer"
+        }
+      ],
+      "start_frame": "one engineer stands in the center of a quiet futuristic control space",
+      "end_frame": "the engineer is surrounded by a massive elegant swarm of AI helpers filling the frame vertically",
+      "narration_line": "The next engineer may work with a hundred AI agents.",
+      "narration_cue": "land hundred AI agents at the fullest expansion of the swarm",
+      "narration_offset_ms": 150,
+      "sfx_notes": "layered synth bloom, branching holographic pings, smooth energy rise",
+      "must_keep": [
+        "one central engineer silhouette",
+        "many elegant AI helper forms",
+        "clear vertical scale"
+      ],
+      "negative_constraints": [
+        "no robot faces",
+        "no readable task labels",
+        "no real company branding"
+      ]
+    },
+    {
+      "id": "brutal-benchmark",
+      "title": "The benchmark gets brutal",
+      "mode": "generate",
+      "seconds": "8",
+      "size": "1024x1792",
+      "priority": "normal",
+      "shot_type": "Symbolic metric visualization",
+      "subject": "a highly paid engineer represented by premium symbolic salary and AI-usage meters",
+      "action": "a compensation meter glows large while the AI usage stream stays too small, triggering a sharp visual alarm and imbalance",
+      "setting": "dark luxury data visualization chamber with elegant bars, flowing token particles, and no readable labels",
+      "lighting": "electric amber warning highlights against dark graphite and cool white accents",
+      "camera_motion": "slow descending move as the empty AI-usage stream becomes obvious and the warning intensifies",
+      "mood": "brutal benchmark, pressure, judgment",
+      "start_frame": "a towering compensation bar and a much smaller AI-usage stream sit in tense imbalance",
+      "end_frame": "the mismatch triggers a dramatic red-amber alarm effect around the engineer symbol",
+      "narration_line": "One AI leader's benchmark was brutal: a five-hundred-thousand-dollar engineer should spend half that on AI tokens.",
+      "narration_cue": "land brutal as the warning glow spreads through the frame",
+      "narration_offset_ms": 250,
+      "sfx_notes": "controlled warning pulse, deep impact, flowing particle hiss",
+      "must_keep": [
+        "strong imbalance between salary and AI-use metaphors",
+        "premium abstract visualization",
+        "clean raised lower subtitle-safe band"
+      ],
+      "negative_constraints": [
+        "no readable numbers or labels inside the image",
+        "no spreadsheet look",
+        "no logos"
+      ]
+    },
+    {
+      "id": "real-competition",
+      "title": "Who you are really competing against",
+      "mode": "generate",
+      "seconds": "4",
+      "size": "1024x1792",
+      "priority": "high",
+      "shot_type": "Final sprint hero shot",
+      "subject": "a field of generic engineers in a symbolic race, with one AI-augmented engineer pulling ahead",
+      "action": "the AI-augmented engineer breaks away from the pack toward a bright finish line while the others fade slightly behind",
+      "setting": "clean futuristic sprint corridor with layered depth, luminous horizon, and premium motion design",
+      "lighting": "high-energy amber-white finish glow with cool shadowed background depth",
+      "camera_motion": "fast but smooth forward chase ending on the AI-augmented leader",
+      "mood": "urgent, decisive, inevitable competition",
+      "start_frame": "multiple engineers run in a premium symbolic corridor with one augmented figure beginning to pull ahead",
+      "end_frame": "the AI-augmented leader dominates the frame near the bright horizon while the others trail behind",
+      "narration_line": "Your real competition uses AI better than you.",
+      "narration_cue": "land better than you on the strongest lead frame",
+      "narration_offset_ms": 150,
+      "sfx_notes": "tight chase whoosh, low impact hit, bright finish swell",
+      "must_keep": [
+        "one obvious leader",
+        "clean mobile-readable final composition",
+        "clear raised lower subtitle-safe band"
+      ],
+      "negative_constraints": [
+        "no visible text signage",
+        "no brand marks",
+        "no cluttered background detail"
+      ]
+    }
+  ]
+}

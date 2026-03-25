@@ -240,3 +240,11 @@ multiversal-pictures upload-youtube \
 - review manifests now keep `candidates[]`, `selected_candidate`, `review`, and `recommended_action` so stitching only uses the selected winner
 - final stitched videos can be uploaded to YouTube with stored OAuth credentials and a reusable upload manifest
 - this avoids unstable lip-sync and keeps children’s-story pacing under tighter control
+
+source .venv/bin/activate
+
+multiversal-pictures upload-youtube \
+  --video /Users/yongjip/Projects/potato-king/runs/engineer_with_ai_1min_final/story.mp4 \
+  --title "Test Upload" \
+  --description "Test upload from multiversal-pictures" \
+  --privacy-status private

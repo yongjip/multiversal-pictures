@@ -1,0 +1,27 @@
+Create a provocative 30 to 35 second English YouTube Shorts explainer for a broad audience.
+
+Core idea:
+- raw intelligence is no longer enough
+- the engineer who uses AI well can outperform the smarter engineer who does not
+- future engineers may manage large swarms of AI agents
+- one leading AI CEO used a brutal benchmark around how much AI usage a highly paid engineer should have
+
+Editorial goals:
+- make people stop scrolling in the first 2 seconds
+- keep the framing broad-audience, simple, and emotionally clear
+- do not rely on the speaker's name for the main hook
+- use the speaker's view only as supporting proof inside the story
+- stay provocative but defensible
+
+Visual goals:
+- premium vertical short-form explainer
+- dark graphite environments, electric amber highlights, clean silhouettes, no readable UI text
+- avoid recognizable real people, logos, or literal brand marks
+- leave a raised lower subtitle-safe band clean in every shot
+
+Delivery:
+- 5 shots
+- 9:16 vertical
+- urgent English narration
+- clean mobile-readable compositions
+- final line should feel like a warning, not a summary
