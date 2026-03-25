@@ -124,7 +124,7 @@ Use this loop when quality matters more than volume:
 5. generate the shot list
 6. generate anchors for all human/workspace shots
 7. render the riskiest shot first with `render-shotlist --only ...`
-8. audition narration with `cedar` and `marin`
+8. audition narration with `alloy` and `nova`
 9. run the final master pass with review repair and burned subtitles
 10. upload as `private`, then review in YouTube Studio before switching to `public`
 
@@ -277,15 +277,15 @@ Compare narration voices before the final render:
 ```bash
 multiversal-pictures synthesize-narration \
   --shotlist examples/hybrid_proof_short_shotlist.json \
-  --output-dir runs/hybrid_short_cedar/narration \
-  --voice cedar
+  --output-dir runs/hybrid_short_alloy/narration \
+  --voice alloy
 ```
 
 ```bash
 multiversal-pictures synthesize-narration \
   --shotlist examples/hybrid_proof_short_shotlist.json \
-  --output-dir runs/hybrid_short_marin/narration \
-  --voice marin
+  --output-dir runs/hybrid_short_nova/narration \
+  --voice nova
 ```
 
 Run the final master-quality Shorts pass:
@@ -301,7 +301,7 @@ multiversal-pictures produce \
   --review-threshold 0.84 \
   --review-best-of 2 \
   --burn-subtitles \
-  --narration-voice cedar \
+  --narration-voice alloy \
   --output runs/hybrid_short_master
 ```
 

@@ -38,7 +38,7 @@ Production notes:
 - identify which beats are AI plates, overlay plates, or manual proof
 - keep one clear action per shot
 - use anchors for every generated human/workspace shot
-- default shot timing is 4 to 5 seconds
+- default shot timing is 4 seconds; extend selected beats to 8 seconds only when clearly justified
 - favor medium or wide framing for humans
 
 Delivery:

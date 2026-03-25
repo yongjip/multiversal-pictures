@@ -48,7 +48,6 @@ STORYBOOK_SUBTITLE_POSITION=bottom_raised
 Weekly flagship Shorts overrides:
 
 ```bash
-OPENAI_TTS_VOICE=cedar
 STORYBOOK_REVIEW_MODE=repair
 STORYBOOK_QA_THRESHOLD=0.84
 STORYBOOK_QA_BEST_OF=2
@@ -87,7 +86,7 @@ Recommended operating loop:
 2. write the approved production prompt using `/Users/yongjip/Projects/potato-king/examples/high_quality_shorts_prompt_template.txt`
 3. generate anchors for human/workspace shots
 4. pilot the riskiest shot with `render-shotlist --only`
-5. compare `cedar` and `marin` narration before the final master pass
+5. compare `alloy` and `nova` narration before the final master pass
 
 Hybrid note: real proof clips and exact UI overlays are still assembled after the selected run. Use the pipeline for AI plates, narration, subtitles, and review, then finish precision proof beats in the final edit.
 
@@ -114,7 +113,7 @@ multiversal-pictures produce \
   --review-threshold 0.84 \
   --review-best-of 2 \
   --burn-subtitles \
-  --narration-voice cedar \
+  --narration-voice alloy \
   --output /Users/yongjip/Projects/potato-king/runs/hybrid_short_master
 ```
 

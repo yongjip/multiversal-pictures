@@ -138,8 +138,8 @@ Current OpenAI TTS voices are optimized for English.
 If the content is aimed at a broad audience and the voice quality matters more than local-language nuance:
 
 - write the script in English
-- test `cedar`
-- test `marin`
+- test `alloy`
+- test `nova`
 - keep the tone controlled and direct
 
 If the content must be in Korean:

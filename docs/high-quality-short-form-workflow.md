@@ -141,20 +141,20 @@ Do not run the full batch until the pilot shot is compositionally correct.
 
 ### 7. Compare narration voices before the final pass
 
-Generate narration for both `cedar` and `marin`, then keep the clearer take.
+Generate narration for both `alloy` and `nova`, then keep the clearer take.
 
 ```bash
 multiversal-pictures synthesize-narration \
   --shotlist /Users/yongjip/Projects/potato-king/examples/hybrid_proof_short_shotlist.json \
-  --output-dir /Users/yongjip/Projects/potato-king/runs/hybrid_short_cedar/narration \
-  --voice cedar
+  --output-dir /Users/yongjip/Projects/potato-king/runs/hybrid_short_alloy/narration \
+  --voice alloy
 ```
 
 ```bash
 multiversal-pictures synthesize-narration \
   --shotlist /Users/yongjip/Projects/potato-king/examples/hybrid_proof_short_shotlist.json \
-  --output-dir /Users/yongjip/Projects/potato-king/runs/hybrid_short_marin/narration \
-  --voice marin
+  --output-dir /Users/yongjip/Projects/potato-king/runs/hybrid_short_nova/narration \
+  --voice nova
 ```
 
 Choose the take that is:
@@ -181,7 +181,7 @@ multiversal-pictures produce \
   --review-threshold 0.84 \
   --review-best-of 2 \
   --burn-subtitles \
-  --narration-voice cedar \
+  --narration-voice alloy \
   --output /Users/yongjip/Projects/potato-king/runs/hybrid_short_master
 ```
 

@@ -16,7 +16,7 @@ Use this checklist before approving a final Shorts master.
 - The voice sounds calm, intelligent, and controlled.
 - No line sounds like ad copy or trailer narration.
 - No sentence feels too long for one breath.
-- `cedar` and `marin` were compared before the final choice.
+- `alloy` and `nova` were compared before the final choice.
 
 ## Visuals
 
