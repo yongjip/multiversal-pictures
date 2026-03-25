@@ -63,6 +63,7 @@ When a preset is selected, it overrides the project-level default `size`, `secon
 
 Architecture notes: `/Users/yongjip/Projects/potato-king/docs/agent-workflow.md:1`
 Topic research playbook: `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`
+Engineer + AI production guide: `/Users/yongjip/Projects/potato-king/docs/engineer-with-ai-best-practices.md:1`
 
 ## Run
 

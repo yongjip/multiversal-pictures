@@ -2,6 +2,8 @@
 
 This document is a reusable instruction set for future agents that need to go from **topic selection -> packaging -> production handoff -> publishing handoff**.
 
+For topic-specific production guidance after the angle is chosen, use the companion guide at `/Users/yongjip/Projects/potato-king/docs/engineer-with-ai-best-practices.md:1` when the topic is developers, coding workflows, or engineers using AI.
+
 The target outcome is not just a correct topic. The target outcome is a topic that:
 
 - has a strong reason to be clicked
