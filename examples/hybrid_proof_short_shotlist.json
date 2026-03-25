@@ -1,0 +1,215 @@
+{
+  "project": {
+    "title": "AI Removes Waiting, Not Judgment",
+    "output_preset": "storybook-pro-vertical",
+    "production_mode": "balanced",
+    "subtitle_position": "bottom_raised",
+    "model": "sora-2-pro",
+    "size": "1024x1792",
+    "seconds": "5",
+    "poll_interval_seconds": 10,
+    "download_variants": [
+      "video",
+      "thumbnail",
+      "spritesheet"
+    ],
+    "style_notes": "premium vertical explainer, charcoal and soft gold palette, controlled motion, clean silhouettes, overlay-ready compositions, no readable generated UI text",
+    "format_guidance": "Compose for premium 9:16 vertical framing. Keep the main subject centered, protect a raised lower subtitle-safe band, and leave clean negative space in proof beats for later overlays when needed.",
+    "narration_style": "calm, intelligent, understated English explainer with slight tension in the first line",
+    "narration_notes": "Every line must be understood on first listen. One idea per line. Avoid sales language, trailer energy, and jargon-heavy delivery.",
+    "consistency_notes": "Keep the engineer's wardrobe, silhouette, and workspace stable across shots. Avoid readable text, logos, close hand detail, and visible lip-sync.",
+    "constraints": [
+      "one core claim only",
+      "no readable on-screen text inside generated visuals",
+      "no close-up typing or finger detail",
+      "preserve the raised lower subtitle-safe band",
+      "keep proof beats overlay-ready"
+    ],
+    "audio_notes": "restrained low synth bed, subtle room tone, soft impacts, and airy transitions under external narration only",
+    "characters": [
+      {
+        "id": "lead-engineer",
+        "name": "Lead Engineer",
+        "description": "a generic senior engineer in dark minimal clothing, clear silhouette, calm posture, and no recognizable real-person likeness",
+        "continuity_rules": [
+          "keep the same dark wardrobe across all shots",
+          "preserve a calm posture and controlled movement",
+          "avoid celebrity likeness and visible brand styling"
+        ]
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "hook-room-shifts",
+      "title": "The old pressure changes shape",
+      "mode": "generate",
+      "seconds": "5",
+      "priority": "high",
+      "shot_type": "Hero reveal",
+      "subject": "the lead engineer alone in a dim workspace",
+      "action": "looks at a wall of unfinished structure as the cluttered room starts simplifying around them",
+      "setting": "dark studio workspace with abstract boards, modular panels, and premium atmospheric depth",
+      "lighting": "controlled charcoal shadows with soft gold rim light",
+      "camera_motion": "slow push-in with a gentle drift to center the subject",
+      "mood": "tension, clarity beginning to arrive",
+      "characters": [
+        {
+          "id": "lead-engineer"
+        }
+      ],
+      "start_frame": "one engineer sits in a premium but cluttered studio, facing too many unfinished decisions",
+      "end_frame": "the room feels simpler and more ordered while the engineer stays calm",
+      "narration_line": "AI does not remove engineering.",
+      "narration_cue": "land engineering as the room finishes simplifying",
+      "narration_offset_ms": 300,
+      "must_keep": [
+        "one dominant subject",
+        "clean lower subtitle-safe band",
+        "no readable text anywhere in frame"
+      ]
+    },
+    {
+      "id": "proof-overlay-plate",
+      "title": "The blank page disappears first",
+      "mode": "generate",
+      "seconds": "5",
+      "priority": "high",
+      "shot_type": "Overlay-ready proof plate",
+      "subject": "over-shoulder view of the engineer at a desk with a monitor and notebook",
+      "action": "the monitor glows from empty shapes to organized blocks while the engineer stays mostly still",
+      "setting": "minimal workstation with a clean monitor silhouette, desk lamp, and controlled negative space",
+      "lighting": "soft monitor glow with low-contrast room ambience",
+      "camera_motion": "locked or near-locked over-shoulder plate",
+      "mood": "friction giving way to momentum",
+      "characters": [
+        {
+          "id": "lead-engineer"
+        }
+      ],
+      "start_frame": "a calm over-shoulder workstation plate with a mostly empty monitor silhouette",
+      "end_frame": "the monitor remains unreadable but visually organized, ready for a real overlay in post",
+      "narration_line": "It removes the blank page first.",
+      "narration_cue": "land blank page as the screen shifts from empty to structured",
+      "narration_offset_ms": 250,
+      "must_keep": [
+        "overlay-ready clean monitor area",
+        "no readable code or UI text",
+        "stable composition for post replacement"
+      ],
+      "post_notes": "Replace the monitor area with a real screen capture in the final edit if exact proof is needed."
+    },
+    {
+      "id": "busywork-falls-away",
+      "title": "Busywork stops hiding the real problem",
+      "mode": "generate",
+      "seconds": "5",
+      "priority": "normal",
+      "shot_type": "Metaphor transition",
+      "subject": "repetitive task fragments surrounding the engineer",
+      "action": "small repetitive task cards and tangled cables peel away, revealing one clean system path",
+      "setting": "stylized abstract workspace with layered panels and floating task fragments",
+      "lighting": "charcoal base with brighter gold accents where the path clears",
+      "camera_motion": "slow orbital move that ends on the cleared path",
+      "mood": "relief, focus, narrowing attention",
+      "characters": [
+        {
+          "id": "lead-engineer"
+        }
+      ],
+      "start_frame": "the engineer is partially obscured by repetitive fragments and visual noise",
+      "end_frame": "one clear path remains and the engineer is fully visible again",
+      "narration_line": "Then the busywork.",
+      "narration_cue": "land busywork as the clutter peels away",
+      "narration_offset_ms": 250
+    },
+    {
+      "id": "second-proof-plate",
+      "title": "Better engineers test more before the day ends",
+      "mode": "generate",
+      "seconds": "5",
+      "priority": "high",
+      "shot_type": "Second overlay-ready proof plate",
+      "subject": "a clean side-angle workstation with layered panels and a standing engineer silhouette",
+      "action": "abstract panels reorganize into a confident review layout while the engineer observes rather than types",
+      "setting": "premium studio workspace with one large clean panel and smaller soft-focus support screens",
+      "lighting": "soft white panel light and subtle gold accents",
+      "camera_motion": "subtle side slide with no abrupt movement",
+      "mood": "controlled momentum, evidence building",
+      "characters": [
+        {
+          "id": "lead-engineer"
+        }
+      ],
+      "start_frame": "one large clean panel dominates the frame with the engineer in profile",
+      "end_frame": "the composition remains simple and overlay-ready for a real diff, test result, or deploy proof",
+      "narration_line": "Good engineers test more ideas, faster.",
+      "narration_cue": "land test more ideas as the main panel settles into place",
+      "narration_offset_ms": 250,
+      "must_keep": [
+        "large clean panel reserved for post proof",
+        "no readable generated text",
+        "medium human framing only"
+      ],
+      "post_notes": "Use this as a clean plate for a real test, diff, or deploy overlay when exact proof matters."
+    },
+    {
+      "id": "judgment-remains",
+      "title": "The human decision stays central",
+      "mode": "generate",
+      "seconds": "5",
+      "priority": "normal",
+      "shot_type": "Calm decision shot",
+      "subject": "the lead engineer reviewing a simplified architectural board",
+      "action": "studies one elegant system diagram and makes one deliberate physical adjustment",
+      "setting": "clean design wall with luminous geometry and no labels",
+      "lighting": "soft gold highlight on the board and low ambient charcoal fill",
+      "camera_motion": "slow push with a very slight rise",
+      "mood": "control, discernment, confidence",
+      "characters": [
+        {
+          "id": "lead-engineer"
+        }
+      ],
+      "start_frame": "the engineer stands before one clean architecture board",
+      "end_frame": "a single deliberate adjustment resolves the composition",
+      "narration_line": "Judgment still decides what ships.",
+      "narration_cue": "land decides what ships on the final adjustment",
+      "narration_offset_ms": 250,
+      "must_keep": [
+        "no close-up hands",
+        "no readable diagram labels",
+        "clear centered subject"
+      ]
+    },
+    {
+      "id": "payoff-future-scale",
+      "title": "The best engineers look bigger, not louder",
+      "mode": "generate",
+      "seconds": "5",
+      "priority": "high",
+      "shot_type": "Final payoff",
+      "subject": "the engineer stepping into a larger, calmer system space",
+      "action": "moves forward as the environment opens into a bright layered structure with elegant depth",
+      "setting": "futuristic but restrained systems hall with clean modular architecture",
+      "lighting": "bright soft gold horizon against darker foreground depth",
+      "camera_motion": "smooth forward chase that ends in a composed hero frame",
+      "mood": "scale, inevitability, quiet advantage",
+      "characters": [
+        {
+          "id": "lead-engineer"
+        }
+      ],
+      "start_frame": "the engineer begins moving through a narrow dark passage",
+      "end_frame": "the engineer stands inside a larger, calmer structure, clearly ahead of the old workflow",
+      "narration_line": "That is why the best engineers feel bigger, not louder.",
+      "narration_cue": "land bigger, not louder on the clean final hero frame",
+      "narration_offset_ms": 200,
+      "must_keep": [
+        "clean final silhouette",
+        "strong mobile readability",
+        "clear subtitle-safe band"
+      ]
+    }
+  ]
+}

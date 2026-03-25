@@ -45,6 +45,15 @@ STORYBOOK_REVIEW_MODE=score_only
 STORYBOOK_SUBTITLE_POSITION=bottom_raised
 ```
 
+Weekly flagship Shorts overrides:
+
+```bash
+OPENAI_TTS_VOICE=cedar
+STORYBOOK_REVIEW_MODE=repair
+STORYBOOK_QA_THRESHOLD=0.84
+STORYBOOK_QA_BEST_OF=2
+```
+
 ## Agent Workflow
 
 - `generate-shotlist`: story prompt -> story brief -> shotlist JSON
@@ -63,7 +72,51 @@ When a preset is selected, it overrides the project-level default `size`, `secon
 
 Architecture notes: `/Users/yongjip/Projects/potato-king/docs/agent-workflow.md:1`
 Topic research playbook: `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`
+High-quality Shorts workflow: `/Users/yongjip/Projects/potato-king/docs/high-quality-short-form-workflow.md:1`
+Short-form review checklist: `/Users/yongjip/Projects/potato-king/docs/short-form-review-checklist.md:1`
 Engineer + AI production guide: `/Users/yongjip/Projects/potato-king/docs/engineer-with-ai-best-practices.md:1`
+Shorts package template: `/Users/yongjip/Projects/potato-king/examples/high_quality_shorts_package_template.md:1`
+Shorts prompt template: `/Users/yongjip/Projects/potato-king/examples/high_quality_shorts_prompt_template.txt:1`
+Hybrid proof shotlist example: `/Users/yongjip/Projects/potato-king/examples/hybrid_proof_short_shotlist.json:1`
+
+## Weekly Flagship Shorts
+
+Recommended operating loop:
+
+1. fill out `/Users/yongjip/Projects/potato-king/examples/high_quality_shorts_package_template.md`
+2. write the approved production prompt using `/Users/yongjip/Projects/potato-king/examples/high_quality_shorts_prompt_template.txt`
+3. generate anchors for human/workspace shots
+4. pilot the riskiest shot with `render-shotlist --only`
+5. compare `cedar` and `marin` narration before the final master pass
+
+Hybrid note: real proof clips and exact UI overlays are still assembled after the selected run. Use the pipeline for AI plates, narration, subtitles, and review, then finish precision proof beats in the final edit.
+
+Example pilot render:
+
+```bash
+multiversal-pictures render-shotlist \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/hybrid_proof_short_shotlist.json \
+  --output /Users/yongjip/Projects/potato-king/runs/hybrid_short_pilot \
+  --output-preset storybook-pro-vertical \
+  --only proof-overlay-plate
+```
+
+Example master-quality pass:
+
+```bash
+multiversal-pictures produce \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/hybrid_proof_short_shotlist.json \
+  --output-preset storybook-pro-vertical \
+  --production-mode master \
+  --with-anchors \
+  --with-review \
+  --review-mode repair \
+  --review-threshold 0.84 \
+  --review-best-of 2 \
+  --burn-subtitles \
+  --narration-voice cedar \
+  --output /Users/yongjip/Projects/potato-king/runs/hybrid_short_master
+```
 
 ## Run
 

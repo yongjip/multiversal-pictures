@@ -3,6 +3,7 @@
 `Multiversal Pictures` uses a staged agent workflow instead of one giant prompt.
 
 For upstream topic selection and downstream packaging/distribution, use the companion playbook at `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`.
+For reusable weekly Shorts execution, use `/Users/yongjip/Projects/potato-king/docs/high-quality-short-form-workflow.md:1`.
 
 ```mermaid
 flowchart LR
@@ -106,10 +107,32 @@ Start from:
 3. reframe the claim for a broad English-speaking audience
 4. choose the most clickable defensible angle
 5. package title, thumbnail, and script before production
-6. hand off the chosen angle into prompt -> shotlist -> render -> review -> stitch
-7. prepare upload metadata from the same chosen angle
+6. decide which proof beats require real screen captures or designed overlays
+7. hand off the chosen angle into prompt -> shotlist -> render -> review -> stitch
+8. prepare upload metadata from the same chosen angle
 
 The detailed instructions, scoring rubric, and output contract for that upstream stage live in `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`.
+
+## Weekly Flagship Shorts Loop
+
+Use this loop when quality matters more than volume:
+
+1. fill out `/Users/yongjip/Projects/potato-king/examples/high_quality_shorts_package_template.md:1`
+2. choose one core claim and lock the claim/evidence map before shot planning
+3. capture any real proof assets outside the pipeline first
+4. turn the approved package into a prompt with `/Users/yongjip/Projects/potato-king/examples/high_quality_shorts_prompt_template.txt:1`
+5. generate the shot list
+6. generate anchors for all human/workspace shots
+7. render the riskiest shot first with `render-shotlist --only ...`
+8. audition narration with `cedar` and `marin`
+9. run the final master pass with review repair and burned subtitles
+10. upload as `private`, then review in YouTube Studio before switching to `public`
+
+Hybrid note:
+
+- v1 keeps real proof capture and overlay assembly outside `multiversal-pictures`
+- use the pipeline to create AI plates, narration, subtitles, and review artifacts
+- add real proof clips or overlays in the final edit where a concept needs exact UI, code, or terminal fidelity
 
 ## Commands
 
@@ -236,6 +259,50 @@ multiversal-pictures produce \
   --prompt-file examples/panda_story_prompt.txt \
   --output-preset storybook-vertical \
   --output runs/panda_story_vertical
+```
+
+Pilot the riskiest shot before the full run:
+
+```bash
+multiversal-pictures render-shotlist \
+  --shotlist examples/hybrid_proof_short_shotlist.json \
+  --output runs/hybrid_short_pilot \
+  --output-preset storybook-pro-vertical \
+  --only proof-overlay-plate \
+  --jobs 1
+```
+
+Compare narration voices before the final render:
+
+```bash
+multiversal-pictures synthesize-narration \
+  --shotlist examples/hybrid_proof_short_shotlist.json \
+  --output-dir runs/hybrid_short_cedar/narration \
+  --voice cedar
+```
+
+```bash
+multiversal-pictures synthesize-narration \
+  --shotlist examples/hybrid_proof_short_shotlist.json \
+  --output-dir runs/hybrid_short_marin/narration \
+  --voice marin
+```
+
+Run the final master-quality Shorts pass:
+
+```bash
+multiversal-pictures produce \
+  --shotlist examples/hybrid_proof_short_shotlist.json \
+  --output-preset storybook-pro-vertical \
+  --production-mode master \
+  --with-anchors \
+  --with-review \
+  --review-mode repair \
+  --review-threshold 0.84 \
+  --review-best-of 2 \
+  --burn-subtitles \
+  --narration-voice cedar \
+  --output runs/hybrid_short_master
 ```
 
 ```bash

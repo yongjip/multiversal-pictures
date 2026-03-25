@@ -1,0 +1,48 @@
+Create a 25 to 35 second English YouTube Short for a broad audience.
+
+Core claim:
+- [replace with one dominant claim]
+
+Supporting proof:
+- source: [replace]
+- event date: [replace with exact date when relevant]
+- publication date: [replace with exact date when relevant]
+- quote/paraphrase/inference: [label clearly]
+
+Packaging:
+- title option 1: [replace]
+- title option 2: [replace]
+- thumbnail text: [replace]
+- hook line: [replace]
+
+Narration requirements:
+- 5 to 7 beats total
+- 6 to 14 words per line
+- one idea per line
+- first proof point by beat 2 or 3
+- calm, intelligent, understated delivery
+- no ad-like or trailer-like phrasing
+- final line should feel like a payoff or warning, not a recap
+
+Visual requirements:
+- premium 9:16 vertical short-form explainer
+- hybrid proof-based structure
+- use AI video for atmosphere, metaphor, transitions, and simplified system visuals
+- reserve proof beats for real screen captures or designed overlays when exact UI or code is needed
+- no readable generated UI, code, dashboards, or labels
+- no visible lip-sync dialogue
+- no close-up typing or intricate hand interaction
+- keep the raised lower subtitle-safe band clean
+
+Production notes:
+- identify which beats are AI plates, overlay plates, or manual proof
+- keep one clear action per shot
+- use anchors for every generated human/workspace shot
+- default shot timing is 4 to 5 seconds
+- favor medium or wide framing for humans
+
+Delivery:
+- output should fit storybook-pro-vertical
+- one core claim only
+- one early proof point
+- mobile-readable compositions

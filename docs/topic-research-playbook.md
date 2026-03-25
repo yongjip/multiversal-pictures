@@ -3,6 +3,7 @@
 This document is a reusable instruction set for future agents that need to go from **topic selection -> packaging -> production handoff -> publishing handoff**.
 
 For topic-specific production guidance after the angle is chosen, use the companion guide at `/Users/yongjip/Projects/potato-king/docs/engineer-with-ai-best-practices.md:1` when the topic is developers, coding workflows, or engineers using AI.
+For the reusable weekly Shorts workflow, pair this document with `/Users/yongjip/Projects/potato-king/docs/high-quality-short-form-workflow.md:1` and start from `/Users/yongjip/Projects/potato-king/examples/high_quality_shorts_package_template.md:1`.
 
 The target outcome is not just a correct topic. The target outcome is a topic that:
 
@@ -10,6 +11,19 @@ The target outcome is not just a correct topic. The target outcome is a topic th
 - can be defended with current evidence
 - can be explained clearly in English to a broad audience
 - can be turned into a short video without visual confusion
+
+## Weekly Flagship Defaults
+
+Unless a brief explicitly requires something else, optimize for:
+
+- one flagship Short per week
+- 25 to 35 seconds total runtime
+- 9:16 vertical framing
+- a broad English-speaking audience
+- one core claim only
+- one proof beat by beat 2 or 3
+- 5 to 7 beats total
+- hybrid proof-based production, not fully synthetic proof shots
 
 ## Core Principle
 
@@ -63,6 +77,13 @@ The name `Jensen Huang` can still appear in the first 3-10 seconds, the subtitle
 
 7. **Broad audience first means English-first packaging**
    - Draft titles, thumbnail text, hooks, and script in English unless the target audience is explicitly local-language.
+
+8. **Reject concepts that stack multiple current failure modes**
+   - Reject any concept that depends on more than one of these to work:
+   - readable generated UI or code
+   - lip-synced dialogue
+   - multi-character realism
+   - dense technical explanation
 
 ## Topic Selection Workflow
 
@@ -194,6 +215,13 @@ Good patterns:
 - `A mediocre engineer with AI can now outperform a genius without it.`
 - `The next top performer may just be the person using AI best.`
 
+For weekly flagship Shorts:
+
+- make the first line work within 1 to 2 seconds
+- land the first proof point by beat 2 or 3
+- keep the script to 5 to 7 spoken lines
+- keep most lines to 6 to 14 words
+
 ### Evidence Rules
 
 The first proof point should arrive early:
@@ -240,14 +268,16 @@ At least 3 candidate angles with:
 - hook
 - audience fit
 - risk of overclaiming
-- score
+- per-dimension scores for click tension, broad clarity, source strength, visualizability, defensibility, and novelty
+- total score
 
 ### 4. Chosen Packaging
 
 - final title options
 - thumbnail text options
 - one-sentence hook
-- 30-60 second script
+- 25-35 second script
+- 5-7 beat narration outline
 - claim/evidence map
 
 ### 5. Production Handoff
@@ -255,6 +285,7 @@ At least 3 candidate angles with:
 - English story prompt
 - shot structure
 - key visuals
+- proof asset plan
 - safe-area guidance
 - narration tone
 

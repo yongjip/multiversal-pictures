@@ -244,7 +244,11 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
             model=config.review_model or os.getenv("STORYBOOK_QA_MODEL", default_agent_model()),
             mode=effective_review_mode,
             threshold=float(config.review_threshold if config.review_threshold is not None else os.getenv("STORYBOOK_QA_THRESHOLD", "0.78")),
-            best_of=int(config.review_best_of if config.review_best_of is not None else (2 if effective_review_mode == "repair" else 1)),
+            best_of=int(
+                config.review_best_of
+                if config.review_best_of is not None
+                else os.getenv("STORYBOOK_QA_BEST_OF", "2" if effective_review_mode == "repair" else "1")
+            ),
             poll_interval=poll_interval,
             timeout_seconds=timeout_seconds,
             reasoning_effort=config.reasoning_effort or default_agent_reasoning_effort(),
@@ -492,10 +496,10 @@ def _effective_with_anchors(value: Optional[bool], production_mode: str) -> bool
 
 
 def _effective_review_mode(value: Optional[str], production_mode: str) -> str:
-    normalized = str(value or "").strip().lower()
+    normalized = str(value or os.getenv("STORYBOOK_REVIEW_MODE", "")).strip().lower()
     if normalized in {"score_only", "repair"}:
         return normalized
-    return "score_only" if production_mode in {"balanced", "master"} else "score_only"
+    return "repair" if production_mode == "master" else "score_only"
 
 
 def _is_vertical_project(project: Dict[str, Any]) -> bool:

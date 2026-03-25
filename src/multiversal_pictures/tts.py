@@ -27,16 +27,17 @@ def synthesize_narration(
     run_dir = ensure_dir(output_dir)
     raw_dir = ensure_dir(run_dir / "raw")
     aligned_dir = ensure_dir(run_dir / "aligned")
+    instructions = _build_tts_instructions(plan)
     manifest: Dict[str, Any] = {
         "shotlist_path": str(shotlist_path),
         "model": model,
         "voice": voice,
         "response_format": response_format,
+        "instructions": instructions,
         "segments": [],
     }
 
     aligned_paths: List[Path] = []
-    instructions = _build_tts_instructions(plan)
 
     for index, segment in enumerate(plan["segments"], start=1):
         stem = f"{index:02d}-{_slug_segment(segment['shot_id'])}"
@@ -105,7 +106,10 @@ def _build_tts_instructions(plan: Dict[str, Any]) -> str:
     parts = [style]
     if notes:
         parts.append(notes)
-    parts.append("Read clearly for a children's storybook. Keep pacing measured and warm.")
+    parts.append(
+        "Read clearly for external narration. Keep pacing measured, emphasis subtle, and every line easy "
+        "to understand on first listen. Avoid sounding like an ad, a cartoon character, or a theatrical trailer voice."
+    )
     return " ".join(parts)
 
 
