@@ -243,6 +243,7 @@ def build_parser() -> argparse.ArgumentParser:
     review_parser.add_argument("--model", help="Override the review model.")
     review_parser.add_argument("--threshold", type=float, help="Minimum overall score required to auto-keep the selected candidate.")
     review_parser.add_argument("--best-of", type=int, help="Maximum candidate count per eligible shot.")
+    review_parser.add_argument("--mode", choices=["score_only", "repair"], help="Score existing renders only, or allow repair rerenders for low-score shots.")
     review_parser.add_argument("--poll-interval", type=int, help="Polling interval seconds for extra candidate renders.")
     review_parser.add_argument("--timeout-seconds", type=int, help="Maximum wait time per extra candidate render.")
     review_parser.add_argument("--reasoning-effort", choices=["minimal", "low", "medium", "high"], help="Override reasoning effort for the review model.")
@@ -265,16 +266,22 @@ def build_parser() -> argparse.ArgumentParser:
     produce_parser.add_argument("--output-preset", choices=output_preset_names(), help="Preset for render size, duration, and subtitle defaults.")
     produce_parser.add_argument("--size", help="Default output size to write into the shot list when generating from a prompt.")
     produce_parser.add_argument("--seconds", help="Default clip length to write into the shot list when generating from a prompt.")
+    produce_parser.add_argument("--production-mode", choices=["preview", "balanced", "master"], help="Production defaults for speed vs quality. Defaults to balanced.")
+    produce_parser.add_argument("--resume", action="store_true", help="Resume a partially completed production run from existing manifests.")
+    produce_parser.add_argument("--stop-after", choices=["anchors", "narration", "render", "review", "stitch"], help="Stop after a production phase and keep the incremental manifest.")
     produce_parser.add_argument("--download-variants", help="Override variants, e.g. video,thumbnail.")
-    produce_parser.add_argument("--with-anchors", action="store_true", help="Generate GPT Image anchor frames and inject them as input_reference before rendering.")
+    produce_anchor_group = produce_parser.add_mutually_exclusive_group()
+    produce_anchor_group.add_argument("--with-anchors", dest="with_anchors", action="store_const", const=True, help="Generate GPT Image anchor frames and inject them as input_reference before rendering.")
+    produce_anchor_group.add_argument("--no-anchors", dest="with_anchors", action="store_const", const=False, help="Disable anchor generation even when the selected production mode would enable it.")
     produce_parser.add_argument("--image-model", help="Override image model for anchor generation.")
     produce_parser.add_argument("--image-quality", help="Override image quality for anchor generation.")
     produce_parser.add_argument("--with-review", action="store_true", help="Run the review loop after rendering and auto-select the best candidate.")
+    produce_parser.add_argument("--review-mode", choices=["score_only", "repair"], help="Score-only review or repair review with limited rerenders.")
     produce_parser.add_argument("--review-model", help="Override review model.")
     produce_parser.add_argument("--review-threshold", type=float, help="Minimum review score required to auto-keep a shot.")
     produce_parser.add_argument("--review-best-of", type=int, help="Maximum candidate count per eligible shot during review.")
     produce_parser.add_argument("--skip-existing", action="store_true", help="Skip shots with an existing completed manifest in the output run directory.")
-    produce_parser.add_argument("--jobs", type=int, default=1, help="Number of shots to render concurrently.")
+    produce_parser.add_argument("--jobs", type=int, help="Number of shots to render concurrently. Defaults come from the selected production mode.")
     produce_parser.add_argument("--poll-interval", type=int, help="Polling interval seconds.")
     produce_parser.add_argument("--timeout-seconds", type=int, help="Maximum wait time per shot.")
     produce_parser.add_argument("--narration-model", help="Override TTS model.")
@@ -326,7 +333,7 @@ def build_parser() -> argparse.ArgumentParser:
     subtitle_parser.add_argument("--format", choices=["srt", "vtt", "json"], help="Override subtitle format.")
     subtitle_parser.add_argument("--narration-manifest", help="Optional narration-manifest.json for precise cue timing.")
     subtitle_parser.add_argument("--default-offset-ms", type=int, help="Fallback narration offset when a shot does not define one.")
-    subtitle_parser.add_argument("--max-words-per-cue", type=int, default=8, help="Maximum words to keep in a single subtitle cue.")
+    subtitle_parser.add_argument("--max-words-per-cue", type=int, help="Maximum words to keep in a single subtitle cue. Defaults are layout-aware.")
 
     stitch_parser = subparsers.add_parser("stitch-run", help="Combine completed shot videos from a render run into one video.")
     stitch_parser.add_argument("--run-dir", required=True, help="Render run directory containing run-manifest.json.")
@@ -522,8 +529,10 @@ def cmd_generate_anchors(args: argparse.Namespace) -> int:
 
 def cmd_review_shots(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir).resolve()
+    review_mode = str(args.mode or os.getenv("STORYBOOK_REVIEW_MODE", "score_only")).strip().lower()
     threshold = float(args.threshold if args.threshold is not None else os.getenv("STORYBOOK_QA_THRESHOLD", "0.78"))
-    best_of = int(args.best_of if args.best_of is not None else os.getenv("STORYBOOK_QA_BEST_OF", "3"))
+    default_best_of = 2 if review_mode == "repair" else 1
+    best_of = int(args.best_of if args.best_of is not None else os.getenv("STORYBOOK_QA_BEST_OF", str(default_best_of)))
     poll_interval = int(args.poll_interval if args.poll_interval is not None else os.getenv("OPENAI_POLL_INTERVAL_SECONDS", "10"))
     timeout_seconds = int(args.timeout_seconds if args.timeout_seconds is not None else os.getenv("OPENAI_VIDEO_TIMEOUT_SECONDS", "1800"))
     manifest = review_rendered_shots(
@@ -531,6 +540,7 @@ def cmd_review_shots(args: argparse.Namespace) -> int:
         response_client=_responses_client_from_env(),
         video_client=_client_from_env(timeout_seconds),
         model=args.model or os.getenv("STORYBOOK_QA_MODEL", default_agent_model()),
+        mode=review_mode,
         threshold=threshold,
         best_of=best_of,
         poll_interval=poll_interval,
@@ -570,12 +580,13 @@ def cmd_produce(args: argparse.Namespace) -> int:
             output_preset=args.output_preset,
             size=args.size,
             seconds=args.seconds,
-            jobs=max(1, int(args.jobs or 1)),
+            jobs=max(1, int(args.jobs)) if args.jobs else None,
             download_variants=args.download_variants,
-            with_anchors=bool(args.with_anchors),
+            with_anchors=args.with_anchors,
             image_model=args.image_model,
             image_quality=args.image_quality,
             with_review=bool(args.with_review),
+            review_mode=args.review_mode,
             review_model=args.review_model,
             review_threshold=args.review_threshold,
             review_best_of=args.review_best_of,
@@ -599,18 +610,31 @@ def cmd_produce(args: argparse.Namespace) -> int:
             mute_clip_audio=bool(args.mute_clip_audio),
             no_music_ducking=bool(args.no_music_ducking),
             overwrite=bool(args.overwrite),
+            production_mode=args.production_mode,
+            resume=bool(args.resume),
+            stop_after=args.stop_after,
         )
     )
     print(f"Wrote production manifest: {run_dir / 'production-manifest.json'}")
-    print(f"Wrote shot list: {manifest['shotlist_path']}")
-    print(f"Wrote narration audio: {manifest['narration_manifest']['master_audio_path']}")
-    print(f"Wrote run manifest: {run_dir / 'run-manifest.json'}")
+    shotlist_path = manifest.get("shotlist_path") or manifest.get("current_shotlist_path") or manifest.get("input_shotlist_path")
+    if shotlist_path:
+        print(f"Wrote shot list: {shotlist_path}")
     if manifest.get("anchor_manifest"):
         print(f"Wrote anchor manifest: {run_dir / 'anchors' / 'anchors-manifest.json'}")
+    narration_manifest = manifest.get("narration_manifest") or {}
+    if narration_manifest.get("master_audio_path"):
+        print(f"Wrote narration audio: {narration_manifest['master_audio_path']}")
+    if manifest.get("render_manifest") or (run_dir / "run-manifest.json").exists():
+        print(f"Wrote run manifest: {run_dir / 'run-manifest.json'}")
     if manifest.get("review_manifest"):
         print(f"Wrote review manifest: {run_dir / 'review-manifest.json'}")
-    print(f"Wrote stitched video: {manifest['output_path']}")
+    if manifest.get("completed_stage") == "stitch" and manifest.get("output_path"):
+        print(f"Wrote stitched video: {manifest['output_path']}")
+    else:
+        print(f"Stopped after stage: {manifest.get('completed_stage')}")
     if args.upload_youtube:
+        if manifest.get("completed_stage") != "stitch" or not manifest.get("output_path"):
+            raise ValueError("YouTube upload requires the stitch stage to complete.")
         upload_manifest_path, upload_manifest = _run_youtube_upload(
             video_path=Path(manifest["output_path"]).resolve(),
             shotlist_path=Path(manifest["shotlist_path"]).resolve() if manifest.get("shotlist_path") else None,
@@ -704,7 +728,7 @@ def cmd_export_subtitles(args: argparse.Namespace) -> int:
         output_format=args.format,
         narration_manifest_path=Path(args.narration_manifest).resolve() if args.narration_manifest else None,
         default_offset_ms=default_offset_ms,
-        max_words_per_cue=max(1, int(args.max_words_per_cue or 8)),
+        max_words_per_cue=max(1, int(args.max_words_per_cue)) if args.max_words_per_cue else None,
     )
     print(f"Wrote subtitles: {output_path}")
     print(f"Cue count: {subtitle_plan['cue_count']}")

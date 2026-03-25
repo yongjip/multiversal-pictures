@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .files import ensure_dir, read_json, write_json
 from .narration import build_narration_plan
-from .shotlist import load_shotlist
+from .shotlist import load_shotlist, resolve_shot_order
 
 
 def build_subtitle_plan(
@@ -14,9 +14,13 @@ def build_subtitle_plan(
     shotlist: Dict[str, Any],
     narration_manifest: Optional[Dict[str, Any]] = None,
     default_offset_ms: int = 500,
-    max_words_per_cue: int = 8,
+    max_words_per_cue: Optional[int] = None,
 ) -> Dict[str, Any]:
     narration_plan = build_narration_plan(shotlist, default_offset_ms=default_offset_ms)
+    project = dict(shotlist.get("project") or {})
+    shots_by_id = {
+        str(shot.get("id")): dict(shot) for shot in resolve_shot_order(shotlist.get("shots") or [])
+    }
     manifest_segments = {
         str(segment.get("shot_id")): segment for segment in (narration_manifest or {}).get("segments") or []
     }
@@ -33,6 +37,9 @@ def build_subtitle_plan(
         if not narration_line:
             continue
 
+        shot = shots_by_id.get(str(segment.get("shot_id"))) or {}
+        layout = _subtitle_layout_for_segment(shot=shot, project=project)
+        position = _subtitle_position_for_segment(shot=shot, project=project)
         manifest_segment = manifest_segments.get(str(segment.get("shot_id"))) or {}
         offset_ms = int(manifest_segment.get("narration_offset_ms") or segment.get("narration_offset_ms") or default_offset_ms)
         offset_seconds = max(0.0, offset_ms / 1000.0)
@@ -41,7 +48,13 @@ def build_subtitle_plan(
         cue_start_seconds = shot_start_seconds + offset_seconds
         cue_end_limit = shot_start_seconds + shot_seconds
 
-        text_chunks = _split_subtitle_text(narration_line, max_words_per_cue=max_words_per_cue)
+        words_per_chunk = max_words_per_cue if max_words_per_cue is not None else (5 if layout == "vertical" else 8)
+        text_chunks = _split_subtitle_text(
+            narration_line,
+            max_words_per_cue=max(1, int(words_per_chunk)),
+            max_lines_per_cue=2 if layout == "vertical" else 1,
+            split_commas=layout == "vertical",
+        )
         chunk_durations = _allocate_chunk_durations(text_chunks, spoken_seconds or available_seconds)
         chunk_cursor = cue_start_seconds
 
@@ -63,6 +76,8 @@ def build_subtitle_plan(
                     "start_seconds": round(start_seconds, 3),
                     "end_seconds": round(end_seconds, 3),
                     "text": text,
+                    "layout": layout,
+                    "subtitle_position": position,
                 }
             )
             cue_index += 1
@@ -85,7 +100,7 @@ def export_subtitles(
     output_format: Optional[str] = None,
     narration_manifest_path: Optional[Path] = None,
     default_offset_ms: int = 500,
-    max_words_per_cue: int = 8,
+    max_words_per_cue: Optional[int] = None,
 ) -> Dict[str, Any]:
     shotlist = load_shotlist(shotlist_path)
     narration_manifest = read_json(narration_manifest_path) if narration_manifest_path else None
@@ -133,7 +148,7 @@ def write_default_subtitle_assets(
     narration_manifest_path: Path,
     output_dir: Path,
     default_offset_ms: int = 500,
-    max_words_per_cue: int = 8,
+    max_words_per_cue: Optional[int] = None,
 ) -> Dict[str, str]:
     output_dir = ensure_dir(output_dir)
     paths = {
@@ -160,21 +175,38 @@ def _spoken_duration_seconds(segment: Dict[str, Any], fallback_seconds: float) -
     return max(0.0, min(float(raw_duration), float(fallback_seconds)))
 
 
-def _split_subtitle_text(text: str, *, max_words_per_cue: int) -> List[str]:
+def _split_subtitle_text(
+    text: str,
+    *,
+    max_words_per_cue: int,
+    max_lines_per_cue: int,
+    split_commas: bool,
+) -> List[str]:
     normalized = re.sub(r"\s+", " ", text.strip())
     if not normalized:
         return []
 
-    clauses = [chunk.strip() for chunk in re.split(r"(?<=[.!?;:])\s+", normalized) if chunk.strip()]
-    cues: List[str] = []
+    pattern = r"(?<=[.!?;:,])\s+" if split_commas else r"(?<=[.!?;:])\s+"
+    clauses = [chunk.strip() for chunk in re.split(pattern, normalized) if chunk.strip()]
+    lines: List[str] = []
     for clause in clauses:
         words = clause.split()
         if len(words) <= max_words_per_cue:
-            cues.append(clause)
+            lines.append(clause)
             continue
         for index in range(0, len(words), max_words_per_cue):
-            cues.append(" ".join(words[index : index + max_words_per_cue]))
-    return cues or [normalized]
+            lines.append(" ".join(words[index : index + max_words_per_cue]))
+
+    grouped: List[str] = []
+    current: List[str] = []
+    for line in lines or [normalized]:
+        current.append(line)
+        if len(current) >= max(1, max_lines_per_cue):
+            grouped.append("\n".join(current))
+            current = []
+    if current:
+        grouped.append("\n".join(current))
+    return grouped
 
 
 def _allocate_chunk_durations(text_chunks: List[str], total_seconds: float) -> List[float]:
@@ -182,7 +214,7 @@ def _allocate_chunk_durations(text_chunks: List[str], total_seconds: float) -> L
         return []
 
     total_seconds = max(float(total_seconds), 0.8)
-    weights = [max(1, len(chunk.split())) for chunk in text_chunks]
+    weights = [max(1, len(chunk.replace("\n", " ").split())) for chunk in text_chunks]
     weight_total = sum(weights) or len(text_chunks)
     provisional = [total_seconds * (weight / weight_total) for weight in weights]
     minimum = 0.8
@@ -205,6 +237,28 @@ def _coerce_seconds(value: Any) -> float:
         return max(0.0, float(value))
     except (TypeError, ValueError):
         return 0.0
+
+
+def _subtitle_layout_for_segment(*, shot: Dict[str, Any], project: Dict[str, Any]) -> str:
+    requested = str(shot.get("subtitle_layout") or project.get("subtitle_layout") or "auto").strip().lower()
+    if requested in {"vertical", "widescreen"}:
+        return requested
+
+    size_value = str(shot.get("size") or project.get("size") or "1280x720").strip().lower()
+    if "x" not in size_value:
+        return "widescreen"
+    width_text, height_text = size_value.split("x", 1)
+    try:
+        return "vertical" if int(height_text) > int(width_text) else "widescreen"
+    except ValueError:
+        return "widescreen"
+
+
+def _subtitle_position_for_segment(*, shot: Dict[str, Any], project: Dict[str, Any]) -> str:
+    value = str(shot.get("subtitle_position") or project.get("subtitle_position") or "bottom").strip().lower()
+    if value in {"bottom", "bottom_raised", "top"}:
+        return value
+    return "bottom"
 
 
 def _format_srt_timestamp(seconds: float) -> str:

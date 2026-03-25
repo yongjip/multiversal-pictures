@@ -12,20 +12,20 @@ from typing import List, Optional, Tuple
 
 SUBTITLE_STYLE_PRESETS = {
     "storybook": {
-        "widescreen": "FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&HAA000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=36",
-        "vertical": "FontSize=19,PrimaryColour=&H00FFFFFF,OutlineColour=&HAA000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=88",
+        "widescreen": "FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&HAA000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=36,MarginL=32,MarginR=32",
+        "vertical": "FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&HAA000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=118,MarginL=78,MarginR=78",
     },
     "large": {
-        "widescreen": "FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&HAA000000,BorderStyle=1,Outline=3,Shadow=0,Alignment=2,MarginV=42",
-        "vertical": "FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&HAA000000,BorderStyle=1,Outline=3,Shadow=0,Alignment=2,MarginV=104",
+        "widescreen": "FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&HAA000000,BorderStyle=1,Outline=3,Shadow=0,Alignment=2,MarginV=42,MarginL=36,MarginR=36",
+        "vertical": "FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&HAA000000,BorderStyle=1,Outline=3,Shadow=0,Alignment=2,MarginV=138,MarginL=92,MarginR=92",
     },
     "minimal": {
-        "widescreen": "FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H88000000,BorderStyle=1,Outline=1,Shadow=0,Alignment=2,MarginV=28",
-        "vertical": "FontSize=17,PrimaryColour=&H00FFFFFF,OutlineColour=&H88000000,BorderStyle=1,Outline=1,Shadow=0,Alignment=2,MarginV=78",
+        "widescreen": "FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H88000000,BorderStyle=1,Outline=1,Shadow=0,Alignment=2,MarginV=28,MarginL=28,MarginR=28",
+        "vertical": "FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H88000000,BorderStyle=1,Outline=1,Shadow=0,Alignment=2,MarginV=96,MarginL=74,MarginR=74",
     },
     "high-contrast": {
-        "widescreen": "FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&HDD000000,BorderStyle=1,Outline=4,Shadow=0,Alignment=2,MarginV=36",
-        "vertical": "FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&HDD000000,BorderStyle=1,Outline=4,Shadow=0,Alignment=2,MarginV=92",
+        "widescreen": "FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&HDD000000,BorderStyle=1,Outline=4,Shadow=0,Alignment=2,MarginV=36,MarginL=32,MarginR=32",
+        "vertical": "FontSize=19,PrimaryColour=&H00FFFFFF,OutlineColour=&HDD000000,BorderStyle=1,Outline=4,Shadow=0,Alignment=2,MarginV=126,MarginL=88,MarginR=88",
     },
 }
 
@@ -403,6 +403,7 @@ def burn_subtitle_track(
     overwrite: bool = False,
     preset: Optional[str] = None,
     layout: Optional[str] = None,
+    position: Optional[str] = None,
     style: Optional[str] = None,
 ) -> str:
     ffmpeg = ffmpeg_executable()
@@ -414,6 +415,7 @@ def burn_subtitle_track(
         preset=preset,
         style_override=style,
         layout=layout or os.getenv("STORYBOOK_SUBTITLE_LAYOUT", "auto"),
+        position=position or os.getenv("STORYBOOK_SUBTITLE_POSITION", "bottom"),
         video_width=video_info.width,
         video_height=video_info.height,
         font_scale=float(_safe_env_float("STORYBOOK_SUBTITLE_FONT_SCALE", 1.0)),
@@ -583,11 +585,16 @@ def subtitle_layout_names() -> List[str]:
     return ["auto", "widescreen", "vertical"]
 
 
+def subtitle_position_names() -> List[str]:
+    return ["bottom", "bottom_raised", "top"]
+
+
 def resolve_subtitle_style(
     *,
     preset: Optional[str],
     style_override: Optional[str],
     layout: Optional[str] = None,
+    position: Optional[str] = None,
     video_width: Optional[int] = None,
     video_height: Optional[int] = None,
     font_scale: float = 1.0,
@@ -608,6 +615,12 @@ def resolve_subtitle_style(
         font_scale=font_scale,
         margin_scale=margin_scale,
     )
+    base_style = _apply_subtitle_position(
+        base_style=base_style,
+        position=position,
+        layout=_resolve_subtitle_layout(layout=layout, video_width=video_width, video_height=video_height),
+        video_height=video_height or 720,
+    )
     return _merge_subtitle_style_strings(base_style, (style_override or "").strip())
 
 
@@ -626,11 +639,34 @@ def _scaled_subtitle_style(
         pairs["FontSize"] = str(_scaled_int(pairs["FontSize"], resolution_scale * max(font_scale, 0.1), minimum=10))
     if "MarginV" in pairs:
         pairs["MarginV"] = str(_scaled_int(pairs["MarginV"], resolution_scale * max(margin_scale, 0.1), minimum=12))
+    if "MarginL" in pairs:
+        pairs["MarginL"] = str(_scaled_int(pairs["MarginL"], resolution_scale, minimum=12))
+    if "MarginR" in pairs:
+        pairs["MarginR"] = str(_scaled_int(pairs["MarginR"], resolution_scale, minimum=12))
     if "Outline" in pairs:
         pairs["Outline"] = str(_scaled_int(pairs["Outline"], resolution_scale, minimum=1))
     if "Shadow" in pairs:
         pairs["Shadow"] = str(_scaled_int(pairs["Shadow"], resolution_scale, minimum=0))
 
+    return ",".join(f"{key}={value}" for key, value in pairs.items())
+
+
+def _apply_subtitle_position(*, base_style: str, position: Optional[str], layout: str, video_height: int) -> str:
+    requested = (position or "bottom").strip().lower()
+    if requested not in subtitle_position_names():
+        choices = ", ".join(subtitle_position_names())
+        raise ValueError(f"Unknown subtitle position '{requested}'. Expected one of: {choices}")
+
+    pairs = _parse_style_pairs(base_style)
+    baseline_margin = int(pairs.get("MarginV", "36"))
+    if requested == "top":
+        pairs["Alignment"] = "8"
+        pairs["MarginV"] = str(max(baseline_margin, int(round(video_height * (0.08 if layout == "vertical" else 0.05)))))
+    else:
+        pairs["Alignment"] = "2"
+        if requested == "bottom_raised":
+            multiplier = 1.3 if layout == "vertical" else 1.15
+            pairs["MarginV"] = str(max(baseline_margin, int(round(baseline_margin * multiplier))))
     return ",".join(f"{key}={value}" for key, value in pairs.items())
 
 

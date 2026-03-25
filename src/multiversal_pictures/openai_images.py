@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import base64
-import json
-import urllib.error
-import urllib.request
 from typing import Any, Dict
 
-from .openai_videos import OpenAIAPIError
+from .openai_http import OpenAIAPIError, openai_json_request
 
 
 class OpenAIImagesClient:
@@ -45,24 +42,11 @@ class OpenAIImagesClient:
         return base64.b64decode(image_base64)
 
     def _json(self, method: str, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        url = f"{self.base_url}{path}"
-        body = json.dumps(payload).encode("utf-8")
-        request = urllib.request.Request(
-            url=url,
-            method=method.upper(),
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
+        return openai_json_request(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            path=path,
+            method=method,
+            payload=payload,
+            timeout=self.timeout,
         )
-        try:
-            with urllib.request.urlopen(request, data=body, timeout=self.timeout) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as error:
-            raw = error.read().decode("utf-8", errors="replace")
-            try:
-                payload = json.loads(raw)
-                message = payload.get("error", {}).get("message", raw)
-            except json.JSONDecodeError:
-                message = raw
-            raise OpenAIAPIError(f"OpenAI request failed ({error.code}): {message}") from error

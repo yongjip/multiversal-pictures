@@ -19,6 +19,7 @@ def review_rendered_shots(
     response_client: OpenAIResponsesClient,
     video_client: OpenAIVideosClient,
     model: str,
+    mode: str,
     threshold: float,
     best_of: int,
     poll_interval: int,
@@ -39,8 +40,10 @@ def review_rendered_shots(
     ordered_shots = resolve_shot_order(shotlist.get("shots") or [])
     shot_by_id = {shot["id"]: shot for shot in ordered_shots}
     selected_ids = selected_ids or set()
-    best_of = max(1, int(best_of))
+    review_mode = _review_mode(mode)
+    best_of = 1 if review_mode == "score_only" else max(1, int(best_of))
     threshold = max(0.0, min(float(threshold), 1.0))
+    required_variants = ("thumbnail",) if review_mode == "score_only" else REVIEW_VARIANTS
 
     dependents = _dependent_ids_by_source(ordered_shots)
     run_shots = {str(item.get("id")): _normalize_shot_manifest(dict(item), shot_by_id.get(str(item.get("id")))) for item in run_manifest.get("shots") or []}
@@ -57,6 +60,7 @@ def review_rendered_shots(
         "run_dir": str(run_dir),
         "shotlist_path": str(shotlist_path),
         "model": model,
+        "mode": review_mode,
         "threshold": threshold,
         "best_of": best_of,
         "reviewed_at": utc_timestamp(),
@@ -79,13 +83,14 @@ def review_rendered_shots(
         shot_dir = _shot_dir(run_dir, shot)
         candidate = _selected_candidate_manifest(manifest)
         if candidate and candidate.get("status") == "completed":
-            _ensure_review_variants(candidate, shot_dir=shot_dir, video_client=video_client)
+            _ensure_review_variants(candidate, shot_dir=shot_dir, video_client=video_client, variants=required_variants)
             candidate["review"] = _review_candidate(
                 project=project,
                 shot=shot,
                 candidate=candidate,
                 response_client=response_client,
                 model=model,
+                review_variants=required_variants,
                 reasoning_effort=reasoning_effort,
             )
         else:
@@ -97,7 +102,7 @@ def review_rendered_shots(
             and not locked_chain
         )
 
-        if _should_generate_more_candidates(manifest, shot, threshold=threshold, best_of=best_of) and eligible_for_extra_candidates:
+        if review_mode == "repair" and _should_generate_more_candidates(manifest, threshold=threshold, best_of=best_of) and eligible_for_extra_candidates:
             while len(manifest.get("candidates") or []) < best_of:
                 new_candidate = _render_candidate(
                     run_dir=run_dir,
@@ -110,13 +115,14 @@ def review_rendered_shots(
                     timeout_seconds=timeout_seconds,
                 )
                 if new_candidate.get("status") == "completed":
-                    _ensure_review_variants(new_candidate, shot_dir=shot_dir, video_client=video_client)
+                    _ensure_review_variants(new_candidate, shot_dir=shot_dir, video_client=video_client, variants=required_variants)
                     new_candidate["review"] = _review_candidate(
                         project=project,
                         shot=shot,
                         candidate=new_candidate,
                         response_client=response_client,
                         model=model,
+                        review_variants=required_variants,
                         reasoning_effort=reasoning_effort,
                     )
                 manifest.setdefault("candidates", []).append(new_candidate)
@@ -171,9 +177,10 @@ def _review_candidate(
     candidate: Dict[str, Any],
     response_client: OpenAIResponsesClient,
     model: str,
+    review_variants: tuple[str, ...],
     reasoning_effort: Optional[str],
 ) -> Dict[str, Any]:
-    image_paths = _candidate_image_paths(candidate)
+    image_paths = _candidate_image_paths(candidate, review_variants=review_variants)
     if not image_paths:
         return {
             "overall_score": 0.0,
@@ -307,13 +314,19 @@ def _render_candidate(
         return candidate_manifest
 
 
-def _ensure_review_variants(candidate: Dict[str, Any], *, shot_dir: Path, video_client: OpenAIVideosClient) -> None:
+def _ensure_review_variants(
+    candidate: Dict[str, Any],
+    *,
+    shot_dir: Path,
+    video_client: OpenAIVideosClient,
+    variants: tuple[str, ...],
+) -> None:
     if candidate.get("status") != "completed" or not candidate.get("video_id"):
         return
 
     downloads = candidate.setdefault("downloads", [])
     existing = {str(item.get("variant")) for item in downloads}
-    if all(variant in existing for variant in REVIEW_VARIANTS):
+    if all(variant in existing for variant in variants):
         return
 
     if candidate.get("candidate_id"):
@@ -321,7 +334,7 @@ def _ensure_review_variants(candidate: Dict[str, Any], *, shot_dir: Path, video_
     else:
         candidate_dir = ensure_dir(shot_dir)
 
-    for variant in REVIEW_VARIANTS:
+    for variant in variants:
         if variant in existing:
             continue
         output_path = candidate_dir / f"{variant}{_variant_extension(variant)}"
@@ -330,13 +343,13 @@ def _ensure_review_variants(candidate: Dict[str, Any], *, shot_dir: Path, video_
         downloads.append({"variant": variant, "path": str(output_path)})
 
 
-def _candidate_image_paths(candidate: Dict[str, Any]) -> List[Path]:
+def _candidate_image_paths(candidate: Dict[str, Any], *, review_variants: tuple[str, ...]) -> List[Path]:
     preferred_order = {"thumbnail": 0, "spritesheet": 1}
     paths: List[tuple[int, Path]] = []
     for download in candidate.get("downloads") or []:
         variant = str(download.get("variant") or "")
         path_value = download.get("path")
-        if variant not in preferred_order or not path_value:
+        if variant not in preferred_order or variant not in review_variants or not path_value:
             continue
         path = Path(str(path_value))
         if path.exists():
@@ -362,14 +375,14 @@ def _candidate_score(candidate: Dict[str, Any]) -> float:
         return 0.0
 
 
-def _should_generate_more_candidates(manifest: Dict[str, Any], shot: Dict[str, Any], *, threshold: float, best_of: int) -> bool:
+def _should_generate_more_candidates(manifest: Dict[str, Any], *, threshold: float, best_of: int) -> bool:
     candidates = manifest.get("candidates") or []
     if len(candidates) >= best_of:
         return False
-    if str(shot.get("priority") or "normal").strip().lower() == "high":
-        return True
     selected = _selected_candidate_manifest(manifest)
     if not selected:
+        return True
+    if selected.get("status") != "completed":
         return True
     return _candidate_score(selected) < threshold
 
@@ -503,6 +516,13 @@ def _variant_extension(variant: str) -> str:
         "spritesheet": ".jpg",
     }
     return mapping.get(variant, ".bin")
+
+
+def _review_mode(value: str) -> str:
+    normalized = str(value or "score_only").strip().lower()
+    if normalized not in {"score_only", "repair"}:
+        raise ValueError(f"Unsupported review mode: {value}")
+    return normalized
 
 
 def _shot_review_schema() -> Dict[str, Any]:

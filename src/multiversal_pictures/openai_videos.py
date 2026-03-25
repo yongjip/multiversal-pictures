@@ -3,16 +3,12 @@ from __future__ import annotations
 import json
 import mimetypes
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
-
-class OpenAIAPIError(RuntimeError):
-    pass
+from .openai_http import OpenAIAPIError, openai_json_request, openai_request_bytes
 
 
 class OpenAIVideosClient:
@@ -32,30 +28,25 @@ class OpenAIVideosClient:
         return headers
 
     def _request(self, method: str, path: str, *, payload: Any = None, headers: Optional[Dict[str, str]] = None) -> bytes:
-        url = f"{self.base_url}{path}"
-        request = urllib.request.Request(url=url, method=method.upper(), headers=headers or {})
-        data = None
-        if payload is not None:
-            data = payload if isinstance(payload, (bytes, bytearray)) else str(payload).encode("utf-8")
-        try:
-            with urllib.request.urlopen(request, data=data, timeout=self.timeout) as response:
-                return response.read()
-        except urllib.error.HTTPError as error:
-            body = error.read()
-            message = body.decode("utf-8", errors="replace")
-            try:
-                parsed = json.loads(message)
-                api_message = parsed.get("error", {}).get("message")
-                if api_message:
-                    message = api_message
-            except json.JSONDecodeError:
-                pass
-            raise OpenAIAPIError(f"OpenAI request failed ({error.code}): {message}") from error
+        return openai_request_bytes(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            path=path,
+            method=method,
+            payload=payload,
+            headers=headers,
+            timeout=self.timeout,
+        )
 
     def _json(self, method: str, path: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        body = None if payload is None else json.dumps(payload).encode("utf-8")
-        raw = self._request(method, path, payload=body, headers=self._headers("application/json"))
-        return json.loads(raw.decode("utf-8"))
+        return openai_json_request(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            path=path,
+            method=method,
+            payload=payload,
+            timeout=self.timeout,
+        )
 
     def create_video(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._json("POST", "/videos", payload)

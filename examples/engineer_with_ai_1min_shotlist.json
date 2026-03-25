@@ -1,0 +1,279 @@
+{
+  "project": {
+    "title": "A Mediocre Engineer With AI Beats a Genius Without It",
+    "output_preset": "storybook-pro-vertical",
+    "model": "sora-2-pro",
+    "size": "1024x1792",
+    "seconds": "8",
+    "poll_interval_seconds": 10,
+    "download_variants": [
+      "video",
+      "thumbnail",
+      "spritesheet"
+    ],
+    "style_notes": "premium cinematic tech explainer, dark graphite environments, cool white and electric amber highlights, sleek motion-graphics energy, subtle particles, clean silhouettes, high contrast without readable UI text, visually expensive and modern",
+    "format_guidance": "Compose for premium 9:16 vertical framing. Keep the main subject dominant in the center third, preserve the lower-center safe area for subtitles, and avoid critical detail at the very top and bottom edges.",
+    "narration_style": "urgent, sharp, broad-audience English explainer with confident pacing",
+    "narration_notes": "Every line must be understandable on first listen. Favor strong, provocative phrasing over jargon, but keep the claims defensible.",
+    "consistency_notes": "Do not depict recognizable real people or logos. Use generic engineers, abstract AI agents, holographic swarms, symbolic dashboards without readable text, and visual metaphors for leverage, speed, and competition.",
+    "constraints": [
+      "broad-audience tech explainer tone",
+      "no readable on-screen text inside generated visuals",
+      "no logos, no brand marks, no watermark",
+      "avoid uncanny or photoreal close human faces",
+      "keep motion clean, cinematic, and premium",
+      "preserve subtitle-safe lower center"
+    ],
+    "audio_notes": "Minimal low synth pulse, restrained cinematic whooshes, subtle impacts, and airy ambience under external narration only."
+  },
+  "shots": [
+    {
+      "id": "shifted-rules",
+      "title": "The old advantage disappears",
+      "mode": "generate",
+      "seconds": "4",
+      "size": "1024x1792",
+      "priority": "high",
+      "shot_type": "Hero close-up reveal",
+      "subject": "a lone high-performing engineer in a dark futuristic design studio",
+      "action": "studies complex floating systems alone as the room subtly dims and the feeling of certainty starts collapsing",
+      "setting": "dark graphite design studio with abstract architecture, suspended geometric design forms, and premium atmospheric depth",
+      "lighting": "cool rim light with faint electric amber accents and controlled contrast",
+      "camera_motion": "slow push-in with a slight downward tilt as the room feels smaller",
+      "mood": "ominous realization, high-stakes tension",
+      "start_frame": "one brilliant engineer stands alone in a large premium studio, surrounded by abstract technical forms that imply intelligence and mastery",
+      "end_frame": "the room closes in visually and the engineer suddenly feels isolated and vulnerable",
+      "narration_line": "The smartest engineer in the room may no longer win.",
+      "narration_cue": "land the final word as the room visually tightens around the subject",
+      "narration_offset_ms": 350,
+      "sfx_notes": "low cinematic hum, faint tonal drop, subtle whoosh as the frame tightens",
+      "must_keep": [
+        "one dominant central subject",
+        "premium cinematic lighting",
+        "clean lower-center subtitle safe area"
+      ],
+      "negative_constraints": [
+        "no readable UI text",
+        "no brand logos",
+        "no recognizable real-person likeness"
+      ]
+    },
+    {
+      "id": "mediocre-with-ai",
+      "title": "The average engineer gets leverage",
+      "mode": "generate",
+      "seconds": "8",
+      "size": "1024x1792",
+      "priority": "high",
+      "shot_type": "Competitive split-screen metaphor",
+      "subject": "two generic engineers, one alone and one amplified by multiple AI copilots",
+      "action": "the AI-augmented engineer rapidly multiplies outputs and overtakes the lone expert in a clean symbolic race",
+      "setting": "sleek abstract competition space with layered workstations, progress shapes, and premium motion-graphics depth",
+      "lighting": "cool white on the lone side, brighter amber-white energetic glow on the AI-assisted side",
+      "camera_motion": "start centered, then drift toward the AI-assisted side as it surges ahead",
+      "mood": "shock, competitive imbalance, momentum shift",
+      "start_frame": "two engineers begin at similar starting points in a polished abstract work arena",
+      "end_frame": "the AI-assisted engineer clearly surges ahead while the lone genius falls behind",
+      "narration_line": "A mediocre engineer with AI can now outperform a genius without it.",
+      "narration_cue": "hit outperform as the AI-assisted side pulls decisively ahead",
+      "narration_offset_ms": 300,
+      "sfx_notes": "tight rhythmic pulses, layered whooshes, subtle acceleration sound on the winning side",
+      "must_keep": [
+        "clear visual contrast between solo work and AI leverage",
+        "generic non-identifiable engineers",
+        "strong central composition readable on mobile"
+      ],
+      "negative_constraints": [
+        "no readable text overlays",
+        "no comedy styling",
+        "no clutter in the lower center"
+      ]
+    },
+    {
+      "id": "hundred-agents",
+      "title": "One engineer becomes a command center",
+      "mode": "generate",
+      "seconds": "8",
+      "size": "1024x1792",
+      "priority": "high",
+      "shot_type": "Swarm expansion shot",
+      "subject": "one generic engineer orchestrating a rapidly multiplying swarm of AI agents",
+      "action": "translucent AI assistants branch outward to handle design, code, testing, planning, and simulation tasks in parallel",
+      "setting": "vertical command chamber made of holographic layers, luminous nodes, and flowing task pathways without readable text",
+      "lighting": "electric amber and cool white volumetric light with premium depth",
+      "camera_motion": "slow orbit around the engineer as the swarm expands into a towering halo",
+      "mood": "power, scale, future shock",
+      "start_frame": "one engineer stands in the center of a quiet futuristic control space",
+      "end_frame": "the engineer is surrounded by a massive elegant swarm of AI helpers filling the frame vertically",
+      "narration_line": "Jensen Huang says the next engineer will work with a hundred AI agents.",
+      "narration_cue": "land hundred AI agents at the fullest expansion of the swarm",
+      "narration_offset_ms": 100,
+      "sfx_notes": "layered synth bloom, branching holographic pings, smooth energy rise",
+      "must_keep": [
+        "one central engineer silhouette",
+        "many elegant AI helper forms",
+        "clear vertical scale"
+      ],
+      "negative_constraints": [
+        "no robot faces",
+        "no readable task labels",
+        "no real company branding"
+      ]
+    },
+    {
+      "id": "march-warning",
+      "title": "The warning goes public",
+      "mode": "generate",
+      "seconds": "8",
+      "size": "1024x1792",
+      "priority": "normal",
+      "shot_type": "Stage-to-world transmission",
+      "subject": "a keynote silhouette on stage and distant offices reacting to the message",
+      "action": "a speaker's silhouette delivers a warning on a bright stage while the message ripples outward into generic engineering workspaces around the world",
+      "setting": "high-production conference stage dissolving into a global montage of premium offices and screens",
+      "lighting": "bright stage backlight transitioning into cool office lighting with urgent amber highlights",
+      "camera_motion": "push toward the stage silhouette, then flow outward through space into multiple reacting environments",
+      "mood": "public warning, urgency, wake-up call",
+      "start_frame": "a dramatic keynote silhouette stands before a bright abstract screen on a giant stage",
+      "end_frame": "engineers across multiple clean workspaces pause as the warning reaches them",
+      "narration_line": "In March twenty twenty-six, he argued that engineers who barely use AI are already at a disadvantage.",
+      "narration_cue": "land at a disadvantage as the offices visibly react",
+      "narration_offset_ms": 300,
+      "sfx_notes": "conference-scale reverb, pulse transition into multiple soft alert accents",
+      "must_keep": [
+        "generic stage silhouette only",
+        "broad public-warning feeling",
+        "clean global montage"
+      ],
+      "negative_constraints": [
+        "no recognizable real face",
+        "no readable stage text",
+        "no logos or product marks"
+      ]
+    },
+    {
+      "id": "token-alarm",
+      "title": "The token standard",
+      "mode": "generate",
+      "seconds": "12",
+      "size": "1024x1792",
+      "priority": "high",
+      "shot_type": "Symbolic metric visualization",
+      "subject": "a highly paid engineer represented by premium symbolic salary and AI-usage meters",
+      "action": "a compensation meter glows large while the AI usage stream stays too small, triggering a sharp visual alarm and imbalance",
+      "setting": "dark luxury data visualization chamber with elegant bars, flowing token particles, and no readable labels",
+      "lighting": "electric amber warning highlights against dark graphite and cool white accents",
+      "camera_motion": "slow descending move as the empty AI-usage stream becomes obvious and the warning intensifies",
+      "mood": "brutal benchmark, pressure, judgment",
+      "start_frame": "a towering compensation bar and a much smaller AI-usage stream sit in tense imbalance",
+      "end_frame": "the mismatch triggers a dramatic red-amber alarm effect around the engineer symbol",
+      "narration_line": "He said he'd be deeply alarmed if a five-hundred-thousand-dollar engineer wasn't using at least two-hundred-fifty-thousand dollars' worth of AI tokens.",
+      "narration_cue": "let deeply alarmed hit as the warning glow spreads through the frame",
+      "narration_offset_ms": 250,
+      "sfx_notes": "controlled warning pulse, deep impact, flowing particle hiss",
+      "must_keep": [
+        "strong imbalance between salary and AI-use metaphors",
+        "premium abstract visualization",
+        "subtitle-safe lower center"
+      ],
+      "negative_constraints": [
+        "no readable numbers or labels inside the image",
+        "no spreadsheet look",
+        "no logos"
+      ]
+    },
+    {
+      "id": "paper-pencil",
+      "title": "Old tools versus new leverage",
+      "mode": "generate",
+      "seconds": "8",
+      "size": "1024x1792",
+      "priority": "normal",
+      "shot_type": "Old-world versus future cockpit contrast",
+      "subject": "an engineer struggling with old manual tools contrasted against an AI-native control cockpit",
+      "action": "the manual method looks slow and fragile while the AI-native environment moves with effortless parallel speed",
+      "setting": "split world of sketch-paper fragments dissolving into a luminous AI command cockpit",
+      "lighting": "muted desaturated light on the manual side and clean luminous depth on the AI side",
+      "camera_motion": "travel from the weak manual side into the powerful AI cockpit in one seamless move",
+      "mood": "obsolete versus inevitable, dramatic contrast",
+      "start_frame": "manual tools and paper-like fragments dominate the left side of a tense frame",
+      "end_frame": "the frame resolves into a premium AI-native command environment with overwhelming advantage",
+      "narration_line": "To him, working without AI is like designing modern chips with paper and pencil.",
+      "narration_cue": "land paper and pencil as the old tools visually dissolve",
+      "narration_offset_ms": 300,
+      "sfx_notes": "paper rustle dissolving into clean futuristic sweep and low synth bloom",
+      "must_keep": [
+        "clear old-versus-new contrast",
+        "seamless visual transition",
+        "no readable notes on paper"
+      ],
+      "negative_constraints": [
+        "no brand marks",
+        "no literal chip text",
+        "no messy composition"
+      ]
+    },
+    {
+      "id": "leverage-flow",
+      "title": "The new advantage",
+      "mode": "generate",
+      "seconds": "8",
+      "size": "1024x1792",
+      "priority": "normal",
+      "shot_type": "Leverage metaphor shot",
+      "subject": "one engineer channeling massive streams of AI-generated work through a single command point",
+      "action": "countless design and execution streams flow through the engineer, turning one person into multiplied output",
+      "setting": "abstract vertical data-and-workflow chamber with glowing channels and premium depth",
+      "lighting": "clean white throughput lines with controlled amber energy highlights",
+      "camera_motion": "slow rise from the engineer's hands upward through the multiplied output streams",
+      "mood": "clarity, power, undeniable leverage",
+      "start_frame": "one engineer holds a calm central stance while only a few output lines are visible",
+      "end_frame": "the whole frame becomes a towering flow of multiplied work streaming through one person",
+      "narration_line": "The new advantage is not raw IQ. It's how much AI work flows through you.",
+      "narration_cue": "land flows through you at the peak of the multiplied stream",
+      "narration_offset_ms": 300,
+      "sfx_notes": "steady rising synth line, soft energetic current, elegant acceleration",
+      "must_keep": [
+        "one central human anchor",
+        "clear multiplication metaphor",
+        "premium abstract visuals"
+      ],
+      "negative_constraints": [
+        "no visible code text",
+        "no brand UI",
+        "no cluttered small details"
+      ]
+    },
+    {
+      "id": "final-race",
+      "title": "Who you are really competing against",
+      "mode": "generate",
+      "seconds": "4",
+      "size": "1024x1792",
+      "priority": "high",
+      "shot_type": "Final sprint hero shot",
+      "subject": "a field of generic engineers in a symbolic race, with one AI-augmented engineer pulling ahead",
+      "action": "the AI-augmented engineer breaks away from the pack toward a bright finish line while the others fade slightly behind",
+      "setting": "clean futuristic sprint corridor with layered depth, luminous horizon, and premium motion design",
+      "lighting": "high-energy amber-white finish glow with cool shadowed background depth",
+      "camera_motion": "fast but smooth forward chase ending on the AI-augmented leader",
+      "mood": "urgent, decisive, inevitable competition",
+      "start_frame": "multiple engineers run side by side in a sleek symbolic race corridor",
+      "end_frame": "one AI-augmented engineer clearly leads the field in a strong closing hero frame",
+      "narration_line": "Your real competitor is the engineer using AI better than you.",
+      "narration_cue": "land better than you on the final lead frame",
+      "narration_offset_ms": 100,
+      "sfx_notes": "rising chase pulse, final whoosh, restrained impact on the closing hero frame",
+      "must_keep": [
+        "one clear winner",
+        "mobile-readable central composition",
+        "clean finish-line glow"
+      ],
+      "negative_constraints": [
+        "no logos",
+        "no readable text in the world",
+        "no chaotic crowd clutter"
+      ]
+    }
+  ]
+}

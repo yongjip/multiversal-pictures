@@ -16,6 +16,18 @@ def _join_constraints(items: Iterable[str]) -> str:
     return "; ".join(cleaned)
 
 
+def _unique_strings(items: Iterable[str]) -> List[str]:
+    seen = set()
+    values: List[str] = []
+    for item in items:
+        cleaned = str(item).strip()
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        values.append(cleaned)
+    return values
+
+
 def build_shot_prompt(project: Dict[str, Any], shot: Dict[str, Any]) -> str:
     mode = _shot_mode(shot)
     explicit_prompt = str(shot.get("prompt") or "").strip()
@@ -62,6 +74,7 @@ def _build_generate_prompt(project: Dict[str, Any], shot: Dict[str, Any], explic
     continuity_notes = shot.get("consistency_notes") or project.get("consistency_notes")
     audio_notes = shot.get("audio_notes") or project.get("audio_notes")
     format_guidance = shot.get("format_guidance") or project.get("format_guidance")
+    subtitle_position = _subtitle_position(project, shot)
     start_frame = str(shot.get("start_frame") or "").strip()
     end_frame = str(shot.get("end_frame") or "").strip()
     characters = _selected_character_specs(project, shot)
@@ -69,59 +82,58 @@ def _build_generate_prompt(project: Dict[str, Any], shot: Dict[str, Any], explic
     must_keep = _must_keep(project, shot, characters)
     negative_constraints = _negative_constraints(shot)
 
-    sentences: List[str] = []
+    sections: List[str] = []
     if explicit_prompt:
-        sentences.append(explicit_prompt)
+        sections.append(explicit_prompt)
     else:
-        sentences.extend(
-            [
-                f"{shot_type}.",
-                f"Subject: {subject}.",
-                f"Action: {action}.",
-                f"Setting: {setting}.",
-                f"Lighting: {lighting}.",
-                f"Camera: {camera_motion}.",
-                f"Mood: {mood}.",
-            ]
+        sections.append(
+            "Shot: "
+            f"{shot_type}; subject {subject}; action {action}; setting {setting}; lighting {lighting}; camera {camera_motion}; mood {mood}."
         )
 
     if characters:
-        sentences.append(f"Character continuity: {_character_prompt_block(characters)}.")
+        sections.append(f"Character continuity: {_character_prompt_block(characters)}.")
     if style_notes:
-        sentences.append(f"Style: {style_notes}.")
+        sections.append(f"Look: {style_notes}.")
     if continuity_notes:
-        sentences.append(f"Project continuity: {continuity_notes}.")
-    if start_frame:
-        sentences.append(f"Opening frame: {start_frame}.")
-    if end_frame:
-        sentences.append(f"Closing beat: {end_frame}.")
-    if format_guidance:
-        sentences.append(f"Framing guidance: {format_guidance}.")
-    if audio_notes:
-        sentences.append(f"Audio direction: {audio_notes}.")
-
-    sentences.append("Render as one continuous single shot with no cuts, no montage, and no scene reset.")
-    sentences.append("Keep the lower center visually safe for optional subtitles and captions.")
-    sentences.append(
-        "Narration is added later as external voiceover; do not depend on visible speaking, lip-sync, or character dialogue performance."
+        sections.append(f"Continuity: {continuity_notes}.")
+    if start_frame or end_frame:
+        frame_notes = []
+        if start_frame:
+            frame_notes.append(f"opening frame {start_frame}")
+        if end_frame:
+            frame_notes.append(f"closing beat {end_frame}")
+        sections.append(f"Beat lock: {'; '.join(frame_notes)}.")
+    framing_bits = _unique_strings(
+        [
+            str(format_guidance or "").strip(),
+            _subject_scale_guidance(shot),
+            _subtitle_safe_guidance(subtitle_position),
+        ]
     )
+    if framing_bits:
+        sections.append(f"Framing: {' '.join(framing_bits)}")
+    if audio_notes:
+        sections.append(f"Audio feel: {audio_notes}.")
+    sections.append("Structure: one continuous single shot, no cuts, no montage, no scene reset.")
+    sections.append("Dialogue: narration is external voiceover only; no visible speaking or lip-sync dependency.")
 
     narration_line = str(shot.get("narration_line") or "").strip()
     narration_cue = str(shot.get("narration_cue") or "").strip()
     sfx_notes = str(shot.get("sfx_notes") or "").strip()
     if narration_line:
         if narration_cue:
-            sentences.append(f"Voiceover reference: {narration_cue} narration says '{narration_line}'.")
+            sections.append(f"Voiceover reference: {narration_cue}; narration says '{narration_line}'.")
         else:
-            sentences.append(f"Voiceover reference: narration says '{narration_line}'.")
+            sections.append(f"Voiceover reference: narration says '{narration_line}'.")
     if sfx_notes:
-        sentences.append(f"SFX reference: {sfx_notes}.")
+        sections.append(f"SFX reference: {sfx_notes}.")
     if must_keep:
-        sentences.append(f"Must keep: {_join_constraints(must_keep)}.")
+        sections.append(f"Preserve: {_join_constraints(must_keep)}.")
     if negative_constraints:
-        sentences.append(f"Avoid: {_join_constraints(negative_constraints)}.")
-    sentences.append(f"Constraints: {_join_constraints(constraints)}.")
-    return " ".join(sentences)
+        sections.append(f"Avoid: {_join_constraints(negative_constraints)}.")
+    sections.append(f"Constraints: {_join_constraints(constraints)}.")
+    return " ".join(section.strip() for section in sections if section.strip())
 
 
 def _build_extend_prompt(project: Dict[str, Any], shot: Dict[str, Any], explicit_prompt: str) -> str:
@@ -134,6 +146,7 @@ def _build_extend_prompt(project: Dict[str, Any], shot: Dict[str, Any], explicit
     style_notes = shot.get("style_notes") or project.get("style_notes")
     continuity_notes = shot.get("consistency_notes") or project.get("consistency_notes")
     format_guidance = shot.get("format_guidance") or project.get("format_guidance")
+    subtitle_position = _subtitle_position(project, shot)
     start_frame = str(shot.get("start_frame") or "").strip()
     end_frame = str(shot.get("end_frame") or "").strip()
     characters = _selected_character_specs(project, shot)
@@ -141,80 +154,87 @@ def _build_extend_prompt(project: Dict[str, Any], shot: Dict[str, Any], explicit
     must_keep = _must_keep(project, shot, characters)
     negative_constraints = _negative_constraints(shot)
 
-    sentences = [
+    sections = [
         "Continue the existing completed video as a seamless extension of the same scene.",
         "Preserve motion continuity, camera direction, environment continuity, character identity, wardrobe, palette, and emotional tone from the source clip.",
     ]
     if explicit_prompt:
-        sentences.append(explicit_prompt)
+        sections.append(explicit_prompt)
     else:
-        sentences.extend(
-            [
-                f"Subject continuation: {subject}.",
-                f"Continue with action: {action}.",
-                f"Setting continuity: {setting}.",
-                f"Lighting continuity: {lighting}.",
-                f"Camera continuity: {camera_motion}.",
-                f"Mood continuity: {mood}.",
-            ]
+        sections.append(
+            "Continuation: "
+            f"subject {subject}; action {action}; setting {setting}; lighting {lighting}; camera {camera_motion}; mood {mood}."
         )
     if characters:
-        sentences.append(f"Character continuity: {_character_prompt_block(characters)}.")
+        sections.append(f"Character continuity: {_character_prompt_block(characters)}.")
     if style_notes:
-        sentences.append(f"Style continuity: {style_notes}.")
+        sections.append(f"Look: {style_notes}.")
     if continuity_notes:
-        sentences.append(f"Project continuity: {continuity_notes}.")
+        sections.append(f"Continuity: {continuity_notes}.")
     if start_frame:
-        sentences.append(f"Immediate continuation point: {start_frame}.")
+        sections.append(f"Immediate continuation point: {start_frame}.")
     if end_frame:
-        sentences.append(f"Land the extension on: {end_frame}.")
-    if format_guidance:
-        sentences.append(f"Framing guidance: {format_guidance}.")
+        sections.append(f"Land the extension on: {end_frame}.")
+    framing_bits = _unique_strings(
+        [
+            str(format_guidance or "").strip(),
+            _subject_scale_guidance(shot),
+            _subtitle_safe_guidance(subtitle_position),
+        ]
+    )
+    if framing_bits:
+        sections.append(f"Framing: {' '.join(framing_bits)}")
     if must_keep:
-        sentences.append(f"Must keep: {_join_constraints(must_keep)}.")
+        sections.append(f"Preserve: {_join_constraints(must_keep)}.")
     if negative_constraints:
-        sentences.append(f"Avoid: {_join_constraints(negative_constraints)}.")
-    sentences.append("Do not restart the scene or introduce a new composition unless explicitly requested.")
-    sentences.append("Keep the lower center visually safe for optional subtitles and captions.")
-    sentences.append(
+        sections.append(f"Avoid: {_join_constraints(negative_constraints)}.")
+    sections.append("Do not restart the scene or introduce a new composition unless explicitly requested.")
+    sections.append(
         "Narration remains external voiceover; do not rely on visible speaking, lip-sync, or character dialogue performance."
     )
-    sentences.append(f"Constraints: {_join_constraints(constraints)}.")
-    return " ".join(sentences)
+    sections.append(f"Constraints: {_join_constraints(constraints)}.")
+    return " ".join(section.strip() for section in sections if section.strip())
 
 
 def _build_edit_prompt(project: Dict[str, Any], shot: Dict[str, Any], explicit_prompt: str) -> str:
     style_notes = shot.get("style_notes") or project.get("style_notes")
     continuity_notes = shot.get("consistency_notes") or project.get("consistency_notes")
     format_guidance = shot.get("format_guidance") or project.get("format_guidance")
+    subtitle_position = _subtitle_position(project, shot)
     characters = _selected_character_specs(project, shot)
     constraints = _constraints(project, shot)
     must_keep = _must_keep(project, shot, characters)
     negative_constraints = _negative_constraints(shot)
 
     edit_request = explicit_prompt or str(shot.get("action") or "").strip() or "apply one targeted corrective change"
-    sentences = [
+    sections = [
         "Change only the requested details in the existing video. Keep everything else the same.",
         f"Requested change: {edit_request}.",
     ]
     if characters:
-        sentences.append(f"Preserve character continuity: {_character_prompt_block(characters)}.")
+        sections.append(f"Preserve character continuity: {_character_prompt_block(characters)}.")
     if style_notes:
-        sentences.append(f"Preserve style: {style_notes}.")
+        sections.append(f"Preserve style: {style_notes}.")
     if continuity_notes:
-        sentences.append(f"Preserve project continuity: {continuity_notes}.")
-    if format_guidance:
-        sentences.append(f"Preserve framing guidance: {format_guidance}.")
+        sections.append(f"Preserve project continuity: {continuity_notes}.")
+    framing_bits = _unique_strings(
+        [
+            str(format_guidance or "").strip(),
+            _subject_scale_guidance(shot),
+            _subtitle_safe_guidance(subtitle_position),
+        ]
+    )
+    if framing_bits:
+        sections.append(f"Preserve framing: {' '.join(framing_bits)}")
     if must_keep:
-        sentences.append(f"Keep exactly: {_join_constraints(must_keep)}.")
+        sections.append(f"Keep exactly: {_join_constraints(must_keep)}.")
     if negative_constraints:
-        sentences.append(f"Do not introduce: {_join_constraints(negative_constraints)}.")
-    sentences.append("Keep the lower center visually safe for optional subtitles and captions.")
-    sentences.append(
+        sections.append(f"Do not introduce: {_join_constraints(negative_constraints)}.")
+    sections.append(
         "Narration remains external voiceover; do not add visible speaking, lip-sync, or dialogue performance."
     )
-    sentences.append(f"Constraints: {_join_constraints(constraints)}.")
-    return " ".join(sentences)
+    sections.append(f"Constraints: {_join_constraints(constraints)}.")
+    return " ".join(section.strip() for section in sections if section.strip())
 
 
 def _shot_mode(shot: Dict[str, Any]) -> str:
@@ -239,9 +259,7 @@ def _must_keep(project: Dict[str, Any], shot: Dict[str, Any], characters: List[D
             cleaned = str(rule).strip()
             if cleaned:
                 items.append(cleaned)
-    if project.get("consistency_notes"):
-        items.append(str(project["consistency_notes"]).strip())
-    return [item for item in items if item]
+    return _unique_strings(item for item in items if item)
 
 
 def _selected_character_specs(project: Dict[str, Any], shot: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -277,3 +295,30 @@ def _character_prompt_block(characters: List[Dict[str, Any]]) -> str:
             parts.append(f"keep consistent: {_join_constraints(rules)}")
         blocks.append(" — ".join(parts))
     return " | ".join(blocks)
+
+
+def _subtitle_position(project: Dict[str, Any], shot: Dict[str, Any]) -> str:
+    value = str(shot.get("subtitle_position") or project.get("subtitle_position") or "bottom").strip().lower()
+    if value in {"bottom", "bottom_raised", "top"}:
+        return value
+    return "bottom"
+
+
+def _subject_scale_guidance(shot: Dict[str, Any]) -> str:
+    size_value = str(shot.get("size") or "").strip().lower()
+    if "x" in size_value:
+        width_text, height_text = size_value.split("x", 1)
+        try:
+            if int(height_text) > int(width_text):
+                return "Keep the main subject large and readable in the middle vertical band, with simple silhouettes and uncluttered edges."
+        except ValueError:
+            pass
+    return "Keep the primary subject readable at a glance and avoid tiny competing details."
+
+
+def _subtitle_safe_guidance(position: str) -> str:
+    if position == "top":
+        return "Leave the upper caption band clean with no critical detail in the top center."
+    if position == "bottom_raised":
+        return "Leave a raised lower caption band clean with no critical detail in the lower middle of the frame."
+    return "Leave the lower caption band clean with no critical detail in the lower middle of the frame."

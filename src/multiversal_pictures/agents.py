@@ -101,6 +101,7 @@ class StoryToShotlistAgent:
             output_preset=config.output_preset,
             subtitle_preset=resolved_output_preset.get("subtitle_preset") if resolved_output_preset else None,
             subtitle_layout=resolved_output_preset.get("subtitle_layout") if resolved_output_preset else None,
+            subtitle_position=resolved_output_preset.get("subtitle_position") if resolved_output_preset else None,
             format_guidance=resolved_output_preset.get("format_guidance") if resolved_output_preset else None,
         )
 
@@ -162,6 +163,8 @@ class StoryToShotlistAgent:
             "Valid download variants are video, thumbnail, and spritesheet. "
             f"Generate exactly {config.shot_count} shots unless the brief clearly requires one extra closing beat. "
             "Preserve project.characters as full objects copied from the story brief. "
+            "Use project.production_mode only when the brief clearly implies preview, balanced, or master execution behavior. "
+            "For vertical outputs set project.subtitle_position to bottom_raised unless the brief clearly requires top subtitles. "
             "Reference only those character IDs inside each shot.characters list. "
             "Include continuity notes in the project block and make sure each shot has strong shot_type, subject, action, setting, lighting, camera_motion, and mood fields. "
             "For every shot include mode, seconds, size, priority, must_keep, negative_constraints, and characters. "
@@ -169,7 +172,7 @@ class StoryToShotlistAgent:
             "Shots in extend or edit mode must include source_shot_id or source_video_id and should not rely on characters or input_reference payload fields. "
             "For generate shots, include start_frame and end_frame when they help lock the opening and closing beat, and include input_reference only when an image reference is genuinely useful. "
             "For every shot include a short narration_line, a narration_cue describing when the line lands, a narration_offset_ms integer, and sfx_notes for the sound mix. "
-            "Do not rely on visible talking or lip-synced dialogue. Keep the lower center safe for optional subtitles."
+            "Do not rely on visible talking or lip-synced dialogue. Keep the lower center safe for optional subtitles and set shot.subtitle_position only when a shot clearly needs top or standard bottom captions."
         )
         if config.output_preset:
             preset = resolve_output_preset(config.output_preset)
@@ -293,6 +296,14 @@ def _shotlist_schema() -> Dict[str, Any]:
                     "narration_notes": {"type": "string"},
                     "consistency_notes": {"type": "string"},
                     "format_guidance": {"type": "string"},
+                    "production_mode": {
+                        "type": "string",
+                        "enum": ["preview", "balanced", "master"],
+                    },
+                    "subtitle_position": {
+                        "type": "string",
+                        "enum": ["bottom", "bottom_raised", "top"],
+                    },
                     "constraints": {
                         "type": "array",
                         "items": {"type": "string"},
@@ -359,6 +370,10 @@ def _shotlist_schema() -> Dict[str, Any]:
                         "mood": {"type": "string"},
                         "style_notes": {"type": "string"},
                         "format_guidance": {"type": "string"},
+                        "subtitle_position": {
+                            "type": "string",
+                            "enum": ["bottom", "bottom_raised", "top"],
+                        },
                         "start_frame": {"type": "string"},
                         "end_frame": {"type": "string"},
                         "narration_line": {"type": "string"},

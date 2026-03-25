@@ -6,8 +6,12 @@ from threading import Lock
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from .files import ensure_dir, read_json, slugify, utc_timestamp, write_bytes, write_json
-from .openai_videos import OpenAIVideosClient
+from .openai_videos import OpenAIAPIError, OpenAIVideosClient
 from .shotlist import build_shot_request, preferred_variants
+
+
+ACTIVE_VIDEO_STATUSES = {"queued", "in_progress"}
+RECOVERABLE_TERMINAL_STATUSES = {"failed", "expired", "cancelled", "canceled"}
 
 
 def render_shots(
@@ -45,7 +49,8 @@ def render_shots(
 
     for shot in ordered:
         previous = _existing_manifest(shot=shot, shots_dir=shots_dir) if skip_existing else None
-        if previous and previous.get("status") == "completed" and previous.get("video_id"):
+        variants = preferred_variants(project, shot, download_variants_override)
+        if previous and previous.get("status") == "completed" and previous.get("video_id") and _manifest_downloads_ready(previous, variants):
             known_videos[shot["id"]] = str(previous["video_id"])
             results[shot["id"]] = previous
             print(f"Skipping existing shot: {shot['id']}")
@@ -70,10 +75,10 @@ def render_shots(
     if client is None:
         raise ValueError("OpenAI client is required for real renders.")
 
-    jobs = max(1, jobs)
     print_lock = Lock()
     running: Dict[Future[Dict[str, Any]], Dict[str, Any]] = {}
     failed_ids: Set[str] = set()
+    jobs = max(1, jobs)
 
     with ThreadPoolExecutor(max_workers=jobs) as executor:
         while pending or running:
@@ -157,15 +162,27 @@ def _render_one_shot(
     request_path = requests_dir / f"{shot['order']:02d}-{slugify(shot['id'])}.json"
     write_json(request_path, request_payload)
 
-    shot_manifest: Dict[str, Any] = {
-        "id": shot["id"],
-        "title": shot["title"],
-        "mode": shot.get("mode", "generate"),
-        "request_path": str(request_path),
-        "generated_at": utc_timestamp(),
-        "status": "queued",
-        "downloads": [],
-    }
+    existing_manifest = _existing_manifest(shot=shot, shots_dir=shots_dir)
+    if existing_manifest:
+        resumed = _resume_existing_shot(
+            shot=shot,
+            project=project,
+            request_payload=request_payload,
+            request_path=request_path,
+            existing_manifest=existing_manifest,
+            shot_dir=shot_dir,
+            client=client,
+            poll_interval=poll_interval,
+            timeout_seconds=timeout_seconds,
+            download_variants_override=download_variants_override,
+            print_lock=print_lock,
+        )
+        if resumed is not None:
+            return resumed
+
+    shot_manifest = _base_shot_manifest(shot=shot, request_path=request_path)
+    variants = preferred_variants(project, shot, download_variants_override)
+    job_path = shot_dir / "job.json"
 
     try:
         creation_method = str(shot.get("mode") or "generate").lower()
@@ -179,38 +196,36 @@ def _render_one_shot(
             raise ValueError(f"Unsupported shot mode: {creation_method}")
 
         shot_manifest["video_id"] = job["id"]
-        shot_manifest["job_path"] = str(shot_dir / "job.json")
-        write_json(Path(shot_manifest["job_path"]), job)
+        shot_manifest["job_path"] = str(job_path)
+        shot_manifest["status"] = "submitted"
+        write_json(job_path, job)
+        write_json(shot_dir / "shot-manifest.json", shot_manifest)
         with print_lock:
             print(f"Started {shot['id']}: {job['id']} ({job.get('status')})")
+
+        def _on_update(video: Dict[str, Any]) -> None:
+            write_json(job_path, video)
+            if str(video.get("status")) in ACTIVE_VIDEO_STATUSES and shot_manifest.get("status") != "rendering":
+                shot_manifest["status"] = "rendering"
+                write_json(shot_dir / "shot-manifest.json", shot_manifest)
 
         final_job = client.wait_for_video(
             job["id"],
             poll_interval=poll_interval,
             timeout_seconds=timeout_seconds,
+            on_update=_on_update,
         )
-        write_json(Path(shot_manifest["job_path"]), final_job)
-        shot_manifest["status"] = str(final_job.get("status"))
-
-        if final_job.get("status") != "completed":
-            shot_manifest["error"] = final_job.get("error")
-            write_json(shot_dir / "shot-manifest.json", shot_manifest)
-            with print_lock:
-                print(f"Failed {shot['id']}: {final_job.get('error')}")
-            return shot_manifest
-
-        variants = preferred_variants(project, shot, download_variants_override)
-        for variant in variants:
-            extension = _variant_extension(variant)
-            output_path = shot_dir / f"{variant}{extension}"
-            content = client.download_content(final_job["id"], variant=variant)
-            write_bytes(output_path, content)
-            shot_manifest["downloads"].append({"variant": variant, "path": str(output_path)})
-
-        write_json(shot_dir / "shot-manifest.json", shot_manifest)
-        with print_lock:
-            print(f"Completed {shot['id']}: {final_job['id']}")
-        return shot_manifest
+        write_json(job_path, final_job)
+        return _finalize_rendered_shot(
+            shot=shot,
+            project=project,
+            shot_dir=shot_dir,
+            shot_manifest=shot_manifest,
+            final_job=final_job,
+            variants=variants,
+            client=client,
+            print_lock=print_lock,
+        )
     except Exception as error:
         shot_manifest["status"] = "failed"
         shot_manifest["error"] = str(error)
@@ -218,6 +233,147 @@ def _render_one_shot(
         with print_lock:
             print(f"Failed {shot['id']}: {error}")
         return shot_manifest
+
+
+def _resume_existing_shot(
+    *,
+    shot: Dict[str, Any],
+    project: Dict[str, Any],
+    request_payload: Dict[str, Any],
+    request_path: Path,
+    existing_manifest: Dict[str, Any],
+    shot_dir: Path,
+    client: OpenAIVideosClient,
+    poll_interval: int,
+    timeout_seconds: int,
+    download_variants_override: Optional[str],
+    print_lock: Lock,
+) -> Optional[Dict[str, Any]]:
+    variants = preferred_variants(project, shot, download_variants_override)
+    if existing_manifest.get("status") == "completed" and _manifest_downloads_ready(existing_manifest, variants):
+        return existing_manifest
+
+    video_id = existing_manifest.get("video_id")
+    if not video_id:
+        return None
+
+    job_path = Path(str(existing_manifest.get("job_path") or (shot_dir / "job.json")))
+    manifest = _base_shot_manifest(shot=shot, request_path=request_path)
+    manifest["video_id"] = str(video_id)
+    manifest["job_path"] = str(job_path)
+    manifest["downloads"] = list(existing_manifest.get("downloads") or [])
+    if existing_manifest.get("generated_at"):
+        manifest["generated_at"] = existing_manifest["generated_at"]
+
+    try:
+        current_job = client.retrieve_video(str(video_id))
+    except OpenAIAPIError as error:
+        if _job_missing_or_expired(error):
+            return None
+        raise
+
+    write_json(job_path, current_job)
+    status = str(current_job.get("status") or "")
+    if status in ACTIVE_VIDEO_STATUSES:
+        manifest["status"] = "rendering"
+        write_json(shot_dir / "shot-manifest.json", manifest)
+        final_job = client.wait_for_video(
+            str(video_id),
+            poll_interval=poll_interval,
+            timeout_seconds=timeout_seconds,
+            on_update=lambda video: write_json(job_path, video),
+        )
+        write_json(job_path, final_job)
+        return _finalize_rendered_shot(
+            shot=shot,
+            project=project,
+            shot_dir=shot_dir,
+            shot_manifest=manifest,
+            final_job=final_job,
+            variants=variants,
+            client=client,
+            print_lock=print_lock,
+        )
+
+    if status == "completed":
+        return _finalize_rendered_shot(
+            shot=shot,
+            project=project,
+            shot_dir=shot_dir,
+            shot_manifest=manifest,
+            final_job=current_job,
+            variants=variants,
+            client=client,
+            print_lock=print_lock,
+        )
+
+    if status in RECOVERABLE_TERMINAL_STATUSES:
+        return None
+
+    manifest["status"] = "failed"
+    manifest["error"] = str(current_job.get("error") or f"Shot {shot['id']} ended with status {status or 'unknown'}.")
+    write_json(shot_dir / "shot-manifest.json", manifest)
+    with print_lock:
+        print(f"Failed {shot['id']}: {manifest['error']}")
+    return manifest
+
+
+def _finalize_rendered_shot(
+    *,
+    shot: Dict[str, Any],
+    project: Dict[str, Any],
+    shot_dir: Path,
+    shot_manifest: Dict[str, Any],
+    final_job: Dict[str, Any],
+    variants: List[str],
+    client: OpenAIVideosClient,
+    print_lock: Lock,
+) -> Dict[str, Any]:
+    if str(final_job.get("status")) != "completed":
+        shot_manifest["status"] = "failed"
+        shot_manifest["error"] = final_job.get("error")
+        write_json(shot_dir / "shot-manifest.json", shot_manifest)
+        with print_lock:
+            print(f"Failed {shot['id']}: {final_job.get('error')}")
+        return shot_manifest
+
+    downloads: List[Dict[str, Any]] = []
+    existing_by_variant = {
+        str(item.get("variant")): dict(item) for item in shot_manifest.get("downloads") or [] if item.get("variant")
+    }
+
+    try:
+        for variant in variants:
+            extension = _variant_extension(variant)
+            output_path = shot_dir / f"{variant}{extension}"
+            if output_path.exists():
+                downloads.append({"variant": variant, "path": str(output_path)})
+                continue
+            if variant in existing_by_variant:
+                candidate_path = Path(str(existing_by_variant[variant].get("path") or output_path))
+                if candidate_path.exists():
+                    downloads.append({"variant": variant, "path": str(candidate_path)})
+                    continue
+            content = client.download_content(str(final_job["id"]), variant=variant)
+            write_bytes(output_path, content)
+            downloads.append({"variant": variant, "path": str(output_path)})
+    except Exception as error:
+        shot_manifest["downloads"] = downloads
+        shot_manifest["status"] = "download_failed"
+        shot_manifest["error"] = str(error)
+        write_json(shot_dir / "shot-manifest.json", shot_manifest)
+        with print_lock:
+            print(f"Failed {shot['id']}: {error}")
+        return shot_manifest
+
+    shot_manifest["downloads"] = downloads
+    shot_manifest["status"] = "completed"
+    shot_manifest["video_id"] = str(final_job["id"])
+    shot_manifest.pop("error", None)
+    write_json(shot_dir / "shot-manifest.json", shot_manifest)
+    with print_lock:
+        print(f"Completed {shot['id']}: {final_job['id']}")
+    return shot_manifest
 
 
 def _partition_pending_shots(
@@ -307,3 +463,30 @@ def _variant_extension(variant: str) -> str:
         "spritesheet": ".jpg",
     }
     return mapping.get(variant, ".bin")
+
+
+def _base_shot_manifest(*, shot: Dict[str, Any], request_path: Path) -> Dict[str, Any]:
+    return {
+        "id": shot["id"],
+        "title": shot["title"],
+        "mode": shot.get("mode", "generate"),
+        "request_path": str(request_path),
+        "generated_at": utc_timestamp(),
+        "status": "queued",
+        "downloads": [],
+    }
+
+
+def _manifest_downloads_ready(manifest: Dict[str, Any], variants: List[str]) -> bool:
+    downloads = {str(item.get("variant")): str(item.get("path")) for item in manifest.get("downloads") or [] if item.get("variant")}
+    for variant in variants:
+        if variant not in downloads:
+            return False
+        if not Path(downloads[variant]).exists():
+            return False
+    return True
+
+
+def _job_missing_or_expired(error: OpenAIAPIError) -> bool:
+    message = str(error).lower()
+    return "(404)" in message or "not found" in message or "expired" in message

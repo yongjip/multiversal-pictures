@@ -39,7 +39,10 @@ OPENAI_IMAGE_QUALITY=high
 OPENAI_TTS_MODEL=tts-1-hd
 STORYBOOK_QA_MODEL=gpt-5.4
 STORYBOOK_QA_THRESHOLD=0.78
-STORYBOOK_QA_BEST_OF=3
+STORYBOOK_QA_BEST_OF=2
+STORYBOOK_PRODUCTION_MODE=balanced
+STORYBOOK_REVIEW_MODE=score_only
+STORYBOOK_SUBTITLE_POSITION=bottom_raised
 ```
 
 ## Agent Workflow
@@ -50,13 +53,13 @@ STORYBOOK_QA_BEST_OF=3
 - `export-subtitles`: shotlist or narration timing -> SRT/VTT/JSON subtitles
 - `generate-anchors`: shotlist JSON -> anchor images + derived shotlist with `input_reference`
 - `render-shotlist`: shotlist JSON -> rendered video clips
-- `review-shots`: render run -> scored candidates + selected winner
+- `review-shots`: render run -> score-only review or repair review + selected winner
 - `produce`: prompt file or shotlist -> narration-led storybook master video
 - `upload-youtube`: stitched video or run directory -> YouTube upload manifest
 - `create-character`: reference video -> reusable character ID
 
 Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, `storybook-short-vertical`, `storybook-pro-landscape`, `storybook-pro-vertical`
-When a preset is selected, it overrides the project-level default `size`, `seconds`, framing guidance, and subtitle defaults.
+When a preset is selected, it overrides the project-level default `size`, `seconds`, framing guidance, and subtitle defaults. Vertical presets now default to raised-bottom subtitles.
 
 Architecture notes: `/Users/yongjip/Projects/potato-king/docs/agent-workflow.md:1`
 Topic research playbook: `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`
@@ -74,6 +77,7 @@ multiversal-pictures generate-shotlist \
 multiversal-pictures produce \
   --prompt-file /Users/yongjip/Projects/potato-king/examples/panda_story_prompt.txt \
   --output-preset storybook-vertical \
+  --production-mode balanced \
   --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical
 ```
 
@@ -95,17 +99,37 @@ multiversal-pictures produce \
 multiversal-pictures produce \
   --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
   --output-preset storybook-pro-vertical \
-  --with-anchors \
+  --production-mode master \
   --with-review \
-  --review-best-of 3 \
+  --review-mode repair \
+  --review-best-of 2 \
   --output /Users/yongjip/Projects/potato-king/runs/panda_story_pro_vertical
 ```
 
 ```bash
 multiversal-pictures review-shots \
   --run-dir /Users/yongjip/Projects/potato-king/runs/panda_story_pro_vertical \
-  --best-of 3 \
+  --mode repair \
+  --best-of 2 \
   --threshold 0.78
+```
+
+```bash
+multiversal-pictures produce \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --output-preset storybook-vertical \
+  --production-mode balanced \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical \
+  --stop-after render
+```
+
+```bash
+multiversal-pictures produce \
+  --shotlist /Users/yongjip/Projects/potato-king/examples/panda_story_generated.json \
+  --output-preset storybook-vertical \
+  --production-mode balanced \
+  --output /Users/yongjip/Projects/potato-king/runs/panda_story_vertical \
+  --resume
 ```
 
 ```bash
@@ -209,8 +233,9 @@ multiversal-pictures upload-youtube \
 - subtitle sidecars can be exported from narration timing, embedded as soft tracks, or burned into frames
 - burned subtitles support presets: `storybook`, `large`, `minimal`, `high-contrast`
 - burned subtitle layouts support `widescreen`, `vertical`, and `auto`
-- burned subtitle presets auto-scale font size, outline, and bottom margin to the output resolution
+- burned subtitle presets auto-scale font size, outline, side margins, and bottom margin to the output resolution
 - output presets bundle render size, clip duration, framing guidance, and subtitle defaults for landscape vs 9:16 delivery
+- vertical-first production defaults now favor `balanced` runs with concurrency `2`, anchor reuse on resume, score-only review by default, and a raised-bottom subtitle band
 - quality-first runs can create anchor frames first, feed them into Sora as `input_reference`, then review thumbnail/spritesheet assets before stitching
 - review manifests now keep `candidates[]`, `selected_candidate`, `review`, and `recommended_action` so stitching only uses the selected winner
 - final stitched videos can be uploaded to YouTube with stored OAuth credentials and a reusable upload manifest

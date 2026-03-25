@@ -133,6 +133,7 @@ def normalize_generated_shotlist(
     output_preset: Optional[str] = None,
     subtitle_preset: Optional[str] = None,
     subtitle_layout: Optional[str] = None,
+    subtitle_position: Optional[str] = None,
     format_guidance: Optional[str] = None,
 ) -> Dict[str, Any]:
     normalized = dict(document)
@@ -147,6 +148,8 @@ def normalize_generated_shotlist(
         project["subtitle_preset"] = subtitle_preset
     if subtitle_layout and not project.get("subtitle_layout"):
         project["subtitle_layout"] = subtitle_layout
+    if subtitle_position and not project.get("subtitle_position"):
+        project["subtitle_position"] = subtitle_position
     if format_guidance and not project.get("format_guidance"):
         project["format_guidance"] = format_guidance
     project["download_variants"] = _normalize_variants(

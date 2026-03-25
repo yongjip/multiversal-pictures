@@ -84,6 +84,7 @@ def stitch_run(
                 overwrite=overwrite,
                 preset=subtitle_preset or str(project.get("subtitle_preset") or os.getenv("STORYBOOK_SUBTITLE_PRESET", "storybook")),
                 layout=subtitle_layout or str(project.get("subtitle_layout") or os.getenv("STORYBOOK_SUBTITLE_LAYOUT", "auto")),
+                position=str(project.get("subtitle_position") or os.getenv("STORYBOOK_SUBTITLE_POSITION", "bottom")),
                 style=subtitle_style,
             )
         else:
@@ -118,6 +119,8 @@ def stitch_run(
             stitch_manifest["subtitle_preset"] = subtitle_preset
         if subtitle_layout:
             stitch_manifest["subtitle_layout"] = subtitle_layout
+        if project.get("subtitle_position"):
+            stitch_manifest["subtitle_position"] = str(project.get("subtitle_position"))
         if subtitle_style:
             stitch_manifest["subtitle_style"] = subtitle_style
         if subtitle_mode:

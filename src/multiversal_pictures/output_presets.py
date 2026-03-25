@@ -10,6 +10,7 @@ OUTPUT_PRESETS: Dict[str, Dict[str, str]] = {
         "seconds": "8",
         "subtitle_preset": "storybook",
         "subtitle_layout": "widescreen",
+        "subtitle_position": "bottom",
         "format_guidance": "Compose for 16:9 landscape framing. Stage subjects with clear left-to-right reads and keep the lower center safe for optional subtitles.",
     },
     "storybook-vertical": {
@@ -17,13 +18,15 @@ OUTPUT_PRESETS: Dict[str, Dict[str, str]] = {
         "seconds": "8",
         "subtitle_preset": "large",
         "subtitle_layout": "vertical",
-        "format_guidance": "Compose for 9:16 vertical framing. Keep the main subject centered, stack action vertically, avoid critical details at the extreme top or bottom, and preserve lower-center subtitle safe area.",
+        "subtitle_position": "bottom_raised",
+        "format_guidance": "Compose for 9:16 vertical framing. Keep the main subject centered, let the subject fill the middle band, avoid critical details at the extreme top or bottom, and reserve a taller raised lower subtitle-safe band.",
     },
     "storybook-short": {
         "size": "1280x720",
         "seconds": "6",
         "subtitle_preset": "large",
         "subtitle_layout": "widescreen",
+        "subtitle_position": "bottom",
         "format_guidance": "Compose for 16:9 landscape framing with faster visual reads. Land one clear action per shot and keep the lower center safe for optional subtitles.",
     },
     "storybook-short-vertical": {
@@ -31,13 +34,15 @@ OUTPUT_PRESETS: Dict[str, Dict[str, str]] = {
         "seconds": "6",
         "subtitle_preset": "large",
         "subtitle_layout": "vertical",
-        "format_guidance": "Compose for 9:16 vertical framing with quick, simple subject reads. Center the subject, prioritize one clear action per shot, and reserve lower-center subtitle safe area.",
+        "subtitle_position": "bottom_raised",
+        "format_guidance": "Compose for 9:16 vertical framing with quick, simple subject reads. Center the subject, prioritize one clear action per shot, and reserve a taller raised lower subtitle-safe band.",
     },
     "storybook-pro-landscape": {
         "size": "1792x1024",
         "seconds": "8",
         "subtitle_preset": "storybook",
         "subtitle_layout": "widescreen",
+        "subtitle_position": "bottom",
         "format_guidance": "Compose for premium 16:9 landscape framing. Favor hero-shot clarity, controlled negative space, strong subject silhouette, and keep the lower center safe for optional subtitles.",
     },
     "storybook-pro-vertical": {
@@ -45,7 +50,8 @@ OUTPUT_PRESETS: Dict[str, Dict[str, str]] = {
         "seconds": "8",
         "subtitle_preset": "large",
         "subtitle_layout": "vertical",
-        "format_guidance": "Compose for premium 9:16 vertical framing. Keep the hero subject centered, stack action vertically, protect the lower-center subtitle safe area, and avoid important details at the top and bottom extremes.",
+        "subtitle_position": "bottom_raised",
+        "format_guidance": "Compose for premium 9:16 vertical framing. Keep the hero subject centered, stack action vertically, protect a taller raised lower subtitle-safe band, and avoid important details at the top and bottom extremes.",
     },
 }
 
@@ -87,5 +93,6 @@ def preset_project_overrides(
     resolved["seconds"] = preset["seconds"]
     resolved["subtitle_preset"] = preset["subtitle_preset"]
     resolved["subtitle_layout"] = preset["subtitle_layout"]
+    resolved["subtitle_position"] = preset["subtitle_position"]
     resolved["format_guidance"] = preset["format_guidance"]
     return resolved
