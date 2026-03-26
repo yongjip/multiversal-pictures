@@ -135,6 +135,7 @@ def normalize_generated_shotlist(
     subtitle_layout: Optional[str] = None,
     subtitle_position: Optional[str] = None,
     format_guidance: Optional[str] = None,
+    narration_timing_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
     normalized = dict(document)
     project = dict(normalized.get("project") or {})
@@ -152,6 +153,8 @@ def normalize_generated_shotlist(
         project["subtitle_position"] = subtitle_position
     if format_guidance and not project.get("format_guidance"):
         project["format_guidance"] = format_guidance
+    if narration_timing_mode and not project.get("narration_timing_mode"):
+        project["narration_timing_mode"] = narration_timing_mode
     project["download_variants"] = _normalize_variants(
         project.get("download_variants"),
         default=download_variants or ["video"],

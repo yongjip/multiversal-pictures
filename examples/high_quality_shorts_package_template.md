@@ -89,3 +89,4 @@ Label each beat as:
 - Riskiest shot:
 - Voice candidates:
 - Final review threshold:
+- Timing mode:

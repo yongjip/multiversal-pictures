@@ -16,11 +16,14 @@ Use this checklist before approving a final Shorts master.
 - The voice sounds calm, intelligent, and controlled.
 - No line sounds like ad copy or trailer narration.
 - No sentence feels too long for one breath.
-- `alloy` and `nova` were compared before the final choice.
+- Unintended gaps between spoken lines stay under 0.6 seconds.
+- Silent tails stay under 0.5 seconds except for the final payoff beat.
+- `cedar` and `marin` were compared before the final choice.
 
 ## Visuals
 
 - Each shot has one clear read on mobile.
+- Each shot shows a clear motion change, proof change, or compositional reveal.
 - No generated readable code, UI, logs, charts, or labels appear.
 - Human shots stay medium or wide unless there is a strong reason not to.
 - There are no anatomy, motion, or continuity failures.

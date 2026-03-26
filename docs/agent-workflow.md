@@ -51,7 +51,7 @@ flowchart LR
   - produces a clean handoff for TTS or human voice recording
 - `Narration Synthesis`
   - generates per-shot narration audio with OpenAI TTS
-  - aligns each line to shot timing, builds one master narration track, and writes subtitle sidecars
+  - aligns each line to locked or compact timing, builds one master narration track, and writes subtitle sidecars
 - `Final Edit`
   - can mix narration, optional background music, and optional clip ambience
   - ducks music under narration for cleaner storybook audio
@@ -124,7 +124,7 @@ Use this loop when quality matters more than volume:
 5. generate the shot list
 6. generate anchors for all human/workspace shots
 7. render the riskiest shot first with `render-shotlist --only ...`
-8. audition narration with `alloy` and `nova`
+8. audition narration with `cedar` and `marin`
 9. run the final master pass with review repair and burned subtitles
 10. upload as `private`, then review in YouTube Studio before switching to `public`
 
@@ -277,15 +277,15 @@ Compare narration voices before the final render:
 ```bash
 multiversal-pictures synthesize-narration \
   --shotlist examples/hybrid_proof_short_shotlist.json \
-  --output-dir runs/hybrid_short_alloy/narration \
-  --voice alloy
+  --output-dir runs/hybrid_short_cedar/narration \
+  --voice cedar
 ```
 
 ```bash
 multiversal-pictures synthesize-narration \
   --shotlist examples/hybrid_proof_short_shotlist.json \
-  --output-dir runs/hybrid_short_nova/narration \
-  --voice nova
+  --output-dir runs/hybrid_short_marin/narration \
+  --voice marin
 ```
 
 Run the final master-quality Shorts pass:
@@ -301,7 +301,7 @@ multiversal-pictures produce \
   --review-threshold 0.84 \
   --review-best-of 2 \
   --burn-subtitles \
-  --narration-voice alloy \
+  --narration-voice cedar \
   --output runs/hybrid_short_master
 ```
 

@@ -561,7 +561,7 @@ def cmd_review_shots(args: argparse.Namespace) -> int:
 def cmd_produce(args: argparse.Namespace) -> int:
     run_dir = Path(args.output).resolve()
     final_output_path = Path(args.final_output).resolve() if args.final_output else run_dir / "story.mp4"
-    default_offset_ms = args.default_offset_ms or int(os.getenv("STORYBOOK_NARRATION_OFFSET_MS", "500"))
+    default_offset_ms = args.default_offset_ms if args.default_offset_ms is not None else _optional_env_int("STORYBOOK_NARRATION_OFFSET_MS")
     manifest = run_storybook_production(
         StorybookProductionConfig(
             run_dir=run_dir,
@@ -699,10 +699,10 @@ def cmd_export_narration(args: argparse.Namespace) -> int:
 
 def cmd_synthesize_narration(args: argparse.Namespace) -> int:
     client = _speech_client_from_env()
-    model = args.model or os.getenv("OPENAI_TTS_MODEL", "tts-1-hd")
+    model = args.model or os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
     voice = args.voice or os.getenv("OPENAI_TTS_VOICE", "alloy")
     response_format = args.response_format or os.getenv("OPENAI_TTS_RESPONSE_FORMAT", "wav")
-    default_offset_ms = args.default_offset_ms or int(os.getenv("STORYBOOK_NARRATION_OFFSET_MS", "500"))
+    default_offset_ms = args.default_offset_ms if args.default_offset_ms is not None else _optional_env_int("STORYBOOK_NARRATION_OFFSET_MS")
     manifest = synthesize_narration(
         shotlist_path=Path(args.shotlist).resolve(),
         output_dir=Path(args.output_dir).resolve(),
@@ -721,7 +721,7 @@ def cmd_synthesize_narration(args: argparse.Namespace) -> int:
 
 def cmd_export_subtitles(args: argparse.Namespace) -> int:
     output_path = Path(args.output).resolve()
-    default_offset_ms = args.default_offset_ms or int(os.getenv("STORYBOOK_NARRATION_OFFSET_MS", "500"))
+    default_offset_ms = args.default_offset_ms if args.default_offset_ms is not None else _optional_env_int("STORYBOOK_NARRATION_OFFSET_MS")
     subtitle_plan = export_subtitles(
         shotlist_path=Path(args.shotlist).resolve(),
         output_path=output_path,
@@ -818,6 +818,13 @@ def _speech_client_from_env() -> OpenAISpeechClient:
     base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     timeout = int(os.getenv("OPENAI_TTS_TIMEOUT_SECONDS", "600"))
     return OpenAISpeechClient(api_key=api_key, base_url=base_url, timeout=timeout)
+
+
+def _optional_env_int(name: str) -> Optional[int]:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return None
+    return int(value)
 
 
 def _read_prompt_text(prompt: Optional[str], prompt_file: Optional[str]) -> str:

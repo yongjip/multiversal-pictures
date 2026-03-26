@@ -26,19 +26,21 @@ Narration requirements:
 
 Visual requirements:
 - premium 9:16 vertical short-form explainer
-- hybrid proof-based structure
+- hybrid proof-based animation structure
 - use AI video for atmosphere, metaphor, transitions, and simplified system visuals
 - reserve proof beats for real screen captures or designed overlays when exact UI or code is needed
 - no readable generated UI, code, dashboards, or labels
 - no visible lip-sync dialogue
 - no close-up typing or intricate hand interaction
 - keep the raised lower subtitle-safe band clean
+- favor stylized motion graphics, illustrated textures, and silhouette readability over photoreal human acting
 
 Production notes:
 - identify which beats are AI plates, overlay plates, or manual proof
 - keep one clear action per shot
 - use anchors for every generated human/workspace shot
 - default shot timing is 4 seconds; extend selected beats to 8 seconds only when clearly justified
+- use compact narration timing in the final shot list
 - favor medium or wide framing for humans
 
 Delivery:

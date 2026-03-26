@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .files import ensure_dir, read_json, write_json
 from .media import burn_subtitle_track, concat_video_clips, mix_storybook_audio, mux_subtitle_track
+from .narration import build_narration_plan, resolve_segment_timeline_seconds
 from .shotlist import load_shotlist, resolve_shot_order
 
 
@@ -39,8 +40,12 @@ def stitch_run(
     project = dict(shotlist.get("project") or {})
     ordered_ids = [shot["id"] for shot in resolve_shot_order(shotlist["shots"])]
     manifests_by_id = {str(shot.get("id")): shot for shot in run_manifest.get("shots") or []}
-    video_paths = _ordered_video_paths(ordered_ids, manifests_by_id)
-    if not video_paths:
+    narration_manifest = _read_narration_manifest(run_dir)
+    timeline_by_id = _timeline_seconds_by_id(shotlist=shotlist, narration_manifest=narration_manifest)
+    clip_entries = _ordered_clip_entries(ordered_ids, manifests_by_id, timeline_by_id)
+    video_paths = [entry["path"] for entry in clip_entries]
+    clip_durations = [entry["stitch_seconds"] for entry in clip_entries]
+    if not clip_entries:
         raise ValueError("No completed shot videos found in the run directory.")
 
     ensure_dir(output_path.parent)
@@ -54,6 +59,7 @@ def stitch_run(
         video_paths=video_paths,
         output_path=temp_base_path,
         overwrite=True if (needs_audio_mix or needs_subtitle_mux) else overwrite,
+        clip_durations=clip_durations,
     )
 
     final_audio_mode = audio_mode
@@ -104,9 +110,18 @@ def stitch_run(
         "run_dir": str(run_dir),
         "output_path": str(output_path),
         "clip_count": len(video_paths),
-        "clips": [str(path) for path in video_paths],
+        "clips": [
+            {
+                "shot_id": entry["shot_id"],
+                "path": str(entry["path"]),
+                "stitch_seconds": entry["stitch_seconds"],
+            }
+            for entry in clip_entries
+        ],
         "audio_mode": final_audio_mode,
     }
+    if narration_manifest:
+        stitch_manifest["timing_mode"] = str(narration_manifest.get("timing_mode") or "")
     if narration_audio_path:
         stitch_manifest["narration_audio_path"] = str(narration_audio_path)
     if background_music_path:
@@ -129,8 +144,12 @@ def stitch_run(
     return stitch_manifest
 
 
-def _ordered_video_paths(ordered_ids: List[str], manifests_by_id: Dict[str, Dict[str, Any]]) -> List[Path]:
-    paths: List[Path] = []
+def _ordered_clip_entries(
+    ordered_ids: List[str],
+    manifests_by_id: Dict[str, Dict[str, Any]],
+    timeline_by_id: Dict[str, float],
+) -> List[Dict[str, Any]]:
+    entries: List[Dict[str, Any]] = []
     for shot_id in ordered_ids:
         manifest = manifests_by_id.get(shot_id)
         if not manifest or manifest.get("status") != "completed":
@@ -145,9 +164,43 @@ def _ordered_video_paths(ordered_ids: List[str], manifests_by_id: Dict[str, Dict
             if download.get("variant") == "video" and download.get("path"):
                 path = Path(str(download["path"]))
                 if path.exists():
-                    paths.append(path)
+                    entries.append(
+                        {
+                            "shot_id": shot_id,
+                            "path": path,
+                            "stitch_seconds": timeline_by_id.get(shot_id),
+                        }
+                    )
                 break
-    return paths
+    return entries
+
+
+def _read_narration_manifest(run_dir: Path) -> Optional[Dict[str, Any]]:
+    path = run_dir / "narration" / "narration-manifest.json"
+    if not path.exists():
+        return None
+    return read_json(path)
+
+
+def _timeline_seconds_by_id(
+    *,
+    shotlist: Dict[str, Any],
+    narration_manifest: Optional[Dict[str, Any]],
+) -> Dict[str, float]:
+    plan = build_narration_plan(shotlist, default_offset_ms=None)
+    timing_mode = str((narration_manifest or {}).get("timing_mode") or plan.get("narration_timing_mode") or "locked")
+    manifest_segments = {
+        str(segment.get("shot_id")): segment for segment in (narration_manifest or {}).get("segments") or []
+    }
+    timeline: Dict[str, float] = {}
+    for segment in plan.get("segments") or []:
+        shot_id = str(segment.get("shot_id"))
+        timeline[shot_id] = resolve_segment_timeline_seconds(
+            segment,
+            manifest_segment=manifest_segments.get(shot_id),
+            timing_mode=timing_mode,
+        )
+    return timeline
 
 
 def _stage_path(output_path: Path, suffix: str) -> Path:

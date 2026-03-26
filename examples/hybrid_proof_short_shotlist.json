@@ -4,6 +4,7 @@
     "output_preset": "storybook-pro-vertical",
     "production_mode": "balanced",
     "subtitle_position": "bottom_raised",
+    "narration_timing_mode": "compact",
     "model": "sora-2-pro",
     "size": "1024x1792",
     "seconds": "4",
@@ -13,28 +14,29 @@
       "thumbnail",
       "spritesheet"
     ],
-    "style_notes": "premium vertical explainer, charcoal and soft gold palette, controlled motion, clean silhouettes, overlay-ready compositions, no readable generated UI text",
-    "format_guidance": "Compose for premium 9:16 vertical framing. Keep the main subject centered, protect a raised lower subtitle-safe band, and leave clean negative space in proof beats for later overlays when needed.",
+    "style_notes": "premium editorial motion short, illustrated cut-paper textures, charcoal and soft gold palette, bold silhouettes, clean overlay-ready compositions, no readable generated text",
+    "format_guidance": "Compose for premium 9:16 vertical framing. Keep the main visual read centered, protect a raised lower subtitle-safe band, and leave clean negative space in proof beats for later overlays.",
     "narration_style": "calm, intelligent, understated English explainer with slight tension in the first line",
-    "narration_notes": "Every line must be understood on first listen. One idea per line. Avoid sales language, trailer energy, and jargon-heavy delivery.",
-    "consistency_notes": "Keep the engineer's wardrobe, silhouette, and workspace stable across shots. Avoid readable text, logos, close hand detail, and visible lip-sync.",
+    "narration_notes": "Every line must be understood on first listen. One idea per line. Let compact timing remove dead air between beats.",
+    "consistency_notes": "Keep one stylized operator silhouette, one modular workstation motif, and one limited palette across all shots. Favor illustrated readability and motion-graphic clarity over realism or fine human detail.",
     "constraints": [
       "one core claim only",
       "no readable on-screen text inside generated visuals",
+      "no visible lip-sync or spoken dialogue in frame",
       "no close-up typing or finger detail",
       "preserve the raised lower subtitle-safe band",
       "keep proof beats overlay-ready"
     ],
-    "audio_notes": "restrained low synth bed, subtle room tone, soft impacts, and airy transitions under external narration only",
+    "audio_notes": "restrained low synth pulse, paper-like swishes, soft impacts, and airy transitions under external narration only",
     "characters": [
       {
-        "id": "lead-engineer",
-        "name": "Lead Engineer",
-        "description": "a generic senior engineer in dark minimal clothing, clear silhouette, calm posture, and no recognizable real-person likeness",
+        "id": "guide-silhouette",
+        "name": "Guide Silhouette",
+        "description": "a simplified androgynous editorial silhouette with clean geometric proportions and no photoreal facial detail",
         "continuity_rules": [
-          "keep the same dark wardrobe across all shots",
-          "preserve a calm posture and controlled movement",
-          "avoid celebrity likeness and visible brand styling"
+          "keep the same dark silhouette and gold accent across all shots",
+          "preserve clean geometric proportions and controlled movement",
+          "avoid realistic skin, detailed fingers, or celebrity likeness"
         ]
       }
     ]
@@ -46,25 +48,25 @@
       "mode": "generate",
       "seconds": "4",
       "priority": "high",
-      "shot_type": "Hero reveal",
-      "subject": "the lead engineer alone in a dim workspace",
-      "action": "looks at a wall of unfinished structure as the cluttered room starts simplifying around them",
-      "setting": "dark studio workspace with abstract boards, modular panels, and premium atmospheric depth",
-      "lighting": "controlled charcoal shadows with soft gold rim light",
-      "camera_motion": "slow push-in with a gentle drift to center the subject",
-      "mood": "tension, clarity beginning to arrive",
+      "shot_type": "Editorial hero reveal",
+      "subject": "the guide silhouette inside a layered paper-cut workspace",
+      "action": "stands still while oversized chaotic cards fold into one clean vertical stack around them",
+      "setting": "illustrated studio made of modular panels, paper shadows, and abstract desks",
+      "lighting": "charcoal base with soft gold edge light and crisp silhouette separation",
+      "camera_motion": "slow push-in with a slight upward drift as the room simplifies",
+      "mood": "tension turning into clarity",
       "characters": [
         {
-          "id": "lead-engineer"
+          "id": "guide-silhouette"
         }
       ],
-      "start_frame": "one engineer sits in a premium but cluttered studio, facing too many unfinished decisions",
-      "end_frame": "the room feels simpler and more ordered while the engineer stays calm",
+      "start_frame": "one stylized operator silhouette faces a wall of scattered cards, notes, and abstract blockers",
+      "end_frame": "the room resolves into one readable stack while the silhouette stays calm",
       "narration_line": "AI does not remove engineering.",
-      "narration_cue": "land engineering as the room finishes simplifying",
-      "narration_offset_ms": 300,
+      "narration_cue": "land engineering as the clutter folds into order",
+      "narration_offset_ms": 150,
       "must_keep": [
-        "one dominant subject",
+        "one dominant silhouette",
         "clean lower subtitle-safe band",
         "no readable text anywhere in frame"
       ]
@@ -76,28 +78,28 @@
       "seconds": "4",
       "priority": "high",
       "shot_type": "Overlay-ready proof plate",
-      "subject": "over-shoulder view of the engineer at a desk with a monitor and notebook",
-      "action": "the monitor glows from empty shapes to organized blocks while the engineer stays mostly still",
-      "setting": "minimal workstation with a clean monitor silhouette, desk lamp, and controlled negative space",
-      "lighting": "soft monitor glow with low-contrast room ambience",
+      "subject": "a simplified monitor frame, notebook block, and the guide silhouette over one shoulder",
+      "action": "an empty panel resolves into three bold blocks while the silhouette stays mostly still",
+      "setting": "minimal illustrated workstation with one large clean panel and geometric desk props",
+      "lighting": "soft panel glow with low-contrast charcoal ambience",
       "camera_motion": "locked or near-locked over-shoulder plate",
       "mood": "friction giving way to momentum",
       "characters": [
         {
-          "id": "lead-engineer"
+          "id": "guide-silhouette"
         }
       ],
-      "start_frame": "a calm over-shoulder workstation plate with a mostly empty monitor silhouette",
-      "end_frame": "the monitor remains unreadable but visually organized, ready for a real overlay in post",
+      "start_frame": "a clean over-shoulder workstation plate with a mostly empty rectangular panel",
+      "end_frame": "the panel remains unreadable but visually organized, ready for a real overlay in post",
       "narration_line": "It removes the blank page first.",
-      "narration_cue": "land blank page as the screen shifts from empty to structured",
-      "narration_offset_ms": 250,
+      "narration_cue": "land blank page as the panel resolves into structure",
+      "narration_offset_ms": 150,
       "must_keep": [
-        "overlay-ready clean monitor area",
+        "overlay-ready clean panel area",
         "no readable code or UI text",
         "stable composition for post replacement"
       ],
-      "post_notes": "Replace the monitor area with a real screen capture in the final edit if exact proof is needed."
+      "post_notes": "Replace the panel with a real screen capture in the final edit if exact proof is needed."
     },
     {
       "id": "busywork-falls-away",
@@ -105,23 +107,23 @@
       "mode": "generate",
       "seconds": "4",
       "priority": "normal",
-      "shot_type": "Metaphor transition",
-      "subject": "repetitive task fragments surrounding the engineer",
-      "action": "small repetitive task cards and tangled cables peel away, revealing one clean system path",
-      "setting": "stylized abstract workspace with layered panels and floating task fragments",
-      "lighting": "charcoal base with brighter gold accents where the path clears",
-      "camera_motion": "slow orbital move that ends on the cleared path",
+      "shot_type": "Abstract metaphor transition",
+      "subject": "repetitive task chips, tangled lines, and the guide silhouette",
+      "action": "small task chips and knotted lines peel away to reveal one bright clean route",
+      "setting": "stylized editorial space with floating cards, layered boards, and a single luminous path",
+      "lighting": "charcoal paper texture with brighter gold accents where the route clears",
+      "camera_motion": "slow orbital move ending on the revealed path",
       "mood": "relief, focus, narrowing attention",
       "characters": [
         {
-          "id": "lead-engineer"
+          "id": "guide-silhouette"
         }
       ],
-      "start_frame": "the engineer is partially obscured by repetitive fragments and visual noise",
-      "end_frame": "one clear path remains and the engineer is fully visible again",
+      "start_frame": "the silhouette is partially obscured by repetitive chips and tangled visual noise",
+      "end_frame": "one clear route remains and the silhouette is fully readable again",
       "narration_line": "Then the busywork.",
       "narration_cue": "land busywork as the clutter peels away",
-      "narration_offset_ms": 250
+      "narration_offset_ms": 150
     },
     {
       "id": "second-proof-plate",
@@ -130,22 +132,22 @@
       "seconds": "4",
       "priority": "high",
       "shot_type": "Second overlay-ready proof plate",
-      "subject": "a clean side-angle workstation with layered panels and a standing engineer silhouette",
-      "action": "abstract panels reorganize into a confident review layout while the engineer observes rather than types",
-      "setting": "premium studio workspace with one large clean panel and smaller soft-focus support screens",
-      "lighting": "soft white panel light and subtle gold accents",
+      "subject": "the guide silhouette beside one large clean review panel and smaller support tiles",
+      "action": "abstract tiles snap into a review layout while the silhouette observes rather than types",
+      "setting": "premium studio plate with one large clean panel and several soft-focus support blocks",
+      "lighting": "soft white panel light with restrained gold accents",
       "camera_motion": "subtle side slide with no abrupt movement",
       "mood": "controlled momentum, evidence building",
       "characters": [
         {
-          "id": "lead-engineer"
+          "id": "guide-silhouette"
         }
       ],
-      "start_frame": "one large clean panel dominates the frame with the engineer in profile",
-      "end_frame": "the composition remains simple and overlay-ready for a real diff, test result, or deploy proof",
+      "start_frame": "one large clean panel dominates the frame with the silhouette in profile",
+      "end_frame": "the composition stays simple and overlay-ready for a real diff, test result, or deploy proof",
       "narration_line": "Good engineers test more ideas, faster.",
       "narration_cue": "land test more ideas as the main panel settles into place",
-      "narration_offset_ms": 250,
+      "narration_offset_ms": 150,
       "must_keep": [
         "large clean panel reserved for post proof",
         "no readable generated text",
@@ -160,22 +162,22 @@
       "seconds": "4",
       "priority": "normal",
       "shot_type": "Calm decision shot",
-      "subject": "the lead engineer reviewing a simplified architectural board",
-      "action": "studies one elegant system diagram and makes one deliberate physical adjustment",
-      "setting": "clean design wall with luminous geometry and no labels",
-      "lighting": "soft gold highlight on the board and low ambient charcoal fill",
-      "camera_motion": "slow push with a very slight rise",
+      "subject": "the guide silhouette in front of a clean architecture wall",
+      "action": "studies several glowing routes and taps one path into focus while the others dim",
+      "setting": "minimal illustrated decision wall with luminous geometry and no labels",
+      "lighting": "soft gold highlight on the chosen path with low ambient charcoal fill",
+      "camera_motion": "slow push with a slight rise",
       "mood": "control, discernment, confidence",
       "characters": [
         {
-          "id": "lead-engineer"
+          "id": "guide-silhouette"
         }
       ],
-      "start_frame": "the engineer stands before one clean architecture board",
-      "end_frame": "a single deliberate adjustment resolves the composition",
+      "start_frame": "the silhouette stands before several clean glowing routes",
+      "end_frame": "one route remains bright after a single deliberate decision",
       "narration_line": "Judgment still decides what ships.",
-      "narration_cue": "land decides what ships on the final adjustment",
-      "narration_offset_ms": 250,
+      "narration_cue": "land decides what ships on the final selected route",
+      "narration_offset_ms": 150,
       "must_keep": [
         "no close-up hands",
         "no readable diagram labels",
@@ -189,22 +191,22 @@
       "seconds": "8",
       "priority": "high",
       "shot_type": "Final payoff",
-      "subject": "the engineer stepping into a larger, calmer system space",
-      "action": "moves forward as the environment opens into a bright layered structure with elegant depth",
-      "setting": "futuristic but restrained systems hall with clean modular architecture",
+      "subject": "the guide silhouette walking into a layered systems city made of modular shapes",
+      "action": "moves through a narrow corridor as the environment opens into a bright illustrated structure with elegant depth",
+      "setting": "futuristic but restrained motion-graphic hall built from clean modular panels and diagram shapes",
       "lighting": "bright soft gold horizon against darker foreground depth",
-      "camera_motion": "smooth forward chase that ends in a composed hero frame",
+      "camera_motion": "smooth forward glide ending on a composed hero frame",
       "mood": "scale, inevitability, quiet advantage",
       "characters": [
         {
-          "id": "lead-engineer"
+          "id": "guide-silhouette"
         }
       ],
-      "start_frame": "the engineer begins moving through a narrow dark passage",
-      "end_frame": "the engineer stands inside a larger, calmer structure, clearly ahead of the old workflow",
+      "start_frame": "the silhouette moves through a narrow dark passage made of layered paper panels",
+      "end_frame": "the silhouette stands inside a larger calm systems city, clearly ahead of the old workflow",
       "narration_line": "That is why the best engineers feel bigger, not louder.",
       "narration_cue": "land bigger, not louder on the clean final hero frame",
-      "narration_offset_ms": 200,
+      "narration_offset_ms": 120,
       "must_keep": [
         "clean final silhouette",
         "strong mobile readability",

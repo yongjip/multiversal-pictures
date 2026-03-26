@@ -103,6 +103,7 @@ class StoryToShotlistAgent:
             subtitle_layout=resolved_output_preset.get("subtitle_layout") if resolved_output_preset else None,
             subtitle_position=resolved_output_preset.get("subtitle_position") if resolved_output_preset else None,
             format_guidance=resolved_output_preset.get("format_guidance") if resolved_output_preset else None,
+            narration_timing_mode=resolved_output_preset.get("narration_timing_mode") if resolved_output_preset else None,
         )
 
         trace["story_brief_response"] = story_brief_response
@@ -172,7 +173,9 @@ class StoryToShotlistAgent:
             "Shots in extend or edit mode must include source_shot_id or source_video_id and should not rely on characters or input_reference payload fields. "
             "For generate shots, include start_frame and end_frame when they help lock the opening and closing beat, and include input_reference only when an image reference is genuinely useful. "
             "For every shot include a short narration_line, a narration_cue describing when the line lands, a narration_offset_ms integer, and sfx_notes for the sound mix. "
-            "Do not rely on visible talking or lip-synced dialogue. Keep the lower center safe for optional subtitles and set shot.subtitle_position only when a shot clearly needs top or standard bottom captions."
+            "For vertical short-form explainers prefer hybrid animation: stylized motion graphics, illustrated textures, abstract metaphor shots, and overlay-ready proof plates instead of photoreal human acting. "
+            "Do not rely on visible talking or lip-synced dialogue. Do not depend on readable generated UI, close-up typing, or hand-detail precision. Keep the lower center safe for optional subtitles and set shot.subtitle_position only when a shot clearly needs top or standard bottom captions. "
+            "When the format is vertical short-form, set project.narration_timing_mode to compact."
         )
         if config.output_preset:
             preset = resolve_output_preset(config.output_preset)
@@ -296,6 +299,10 @@ def _shotlist_schema() -> Dict[str, Any]:
                     "narration_notes": {"type": "string"},
                     "consistency_notes": {"type": "string"},
                     "format_guidance": {"type": "string"},
+                    "narration_timing_mode": {
+                        "type": "string",
+                        "enum": ["locked", "compact"],
+                    },
                     "production_mode": {
                         "type": "string",
                         "enum": ["preview", "balanced", "master"],
@@ -379,6 +386,8 @@ def _shotlist_schema() -> Dict[str, Any]:
                         "narration_line": {"type": "string"},
                         "narration_cue": {"type": "string"},
                         "narration_offset_ms": {"type": "integer"},
+                        "hold_after_narration_ms": {"type": "integer"},
+                        "stitch_seconds": {"type": "number"},
                         "sfx_notes": {"type": "string"},
                         "source_shot_id": {"type": "string"},
                         "source_video_id": {"type": "string"},

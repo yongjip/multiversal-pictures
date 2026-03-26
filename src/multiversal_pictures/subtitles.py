@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .files import ensure_dir, read_json, write_json
-from .narration import build_narration_plan
+from .narration import build_narration_plan, resolve_segment_timeline_seconds
 from .shotlist import load_shotlist, resolve_shot_order
 
 
@@ -13,11 +13,12 @@ def build_subtitle_plan(
     *,
     shotlist: Dict[str, Any],
     narration_manifest: Optional[Dict[str, Any]] = None,
-    default_offset_ms: int = 500,
+    default_offset_ms: Optional[int] = None,
     max_words_per_cue: Optional[int] = None,
 ) -> Dict[str, Any]:
     narration_plan = build_narration_plan(shotlist, default_offset_ms=default_offset_ms)
     project = dict(shotlist.get("project") or {})
+    timing_mode = str(narration_plan.get("narration_timing_mode") or "locked")
     shots_by_id = {
         str(shot.get("id")): dict(shot) for shot in resolve_shot_order(shotlist.get("shots") or [])
     }
@@ -29,7 +30,12 @@ def build_subtitle_plan(
     timeline_cursor = 0.0
     cue_index = 1
     for segment in narration_plan.get("segments") or []:
-        shot_seconds = _coerce_seconds(segment.get("seconds"))
+        manifest_segment = manifest_segments.get(str(segment.get("shot_id"))) or {}
+        shot_seconds = resolve_segment_timeline_seconds(
+            segment,
+            manifest_segment=manifest_segment,
+            timing_mode=timing_mode,
+        )
         shot_start_seconds = timeline_cursor
         timeline_cursor += shot_seconds
 
@@ -40,8 +46,12 @@ def build_subtitle_plan(
         shot = shots_by_id.get(str(segment.get("shot_id"))) or {}
         layout = _subtitle_layout_for_segment(shot=shot, project=project)
         position = _subtitle_position_for_segment(shot=shot, project=project)
-        manifest_segment = manifest_segments.get(str(segment.get("shot_id"))) or {}
-        offset_ms = int(manifest_segment.get("narration_offset_ms") or segment.get("narration_offset_ms") or default_offset_ms)
+        offset_value = manifest_segment.get("narration_offset_ms")
+        if offset_value is None:
+            offset_value = segment.get("narration_offset_ms")
+        if offset_value is None:
+            offset_value = default_offset_ms if default_offset_ms is not None else 0
+        offset_ms = int(offset_value)
         offset_seconds = max(0.0, offset_ms / 1000.0)
         available_seconds = max(0.0, shot_seconds - offset_seconds)
         spoken_seconds = _spoken_duration_seconds(manifest_segment, available_seconds)
@@ -99,7 +109,7 @@ def export_subtitles(
     output_path: Path,
     output_format: Optional[str] = None,
     narration_manifest_path: Optional[Path] = None,
-    default_offset_ms: int = 500,
+    default_offset_ms: Optional[int] = None,
     max_words_per_cue: Optional[int] = None,
 ) -> Dict[str, Any]:
     shotlist = load_shotlist(shotlist_path)
@@ -147,7 +157,7 @@ def write_default_subtitle_assets(
     shotlist_path: Path,
     narration_manifest_path: Path,
     output_dir: Path,
-    default_offset_ms: int = 500,
+    default_offset_ms: Optional[int] = None,
     max_words_per_cue: Optional[int] = None,
 ) -> Dict[str, str]:
     output_dir = ensure_dir(output_dir)

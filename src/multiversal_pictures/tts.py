@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from .files import ensure_dir, write_bytes, write_json
 from .media import align_audio_to_duration, concat_audio_tracks, probe_media
-from .narration import build_narration_plan
+from .narration import build_narration_plan, resolve_segment_stitch_seconds
 from .openai_speech import OpenAISpeechClient
 from .shotlist import load_shotlist
 from .subtitles import write_default_subtitle_assets
@@ -19,7 +19,7 @@ def synthesize_narration(
     model: str,
     voice: str,
     response_format: str,
-    default_offset_ms: int,
+    default_offset_ms: Optional[int],
 ) -> Dict[str, Any]:
     shotlist = load_shotlist(shotlist_path)
     plan = build_narration_plan(shotlist, default_offset_ms=default_offset_ms)
@@ -28,12 +28,17 @@ def synthesize_narration(
     raw_dir = ensure_dir(run_dir / "raw")
     aligned_dir = ensure_dir(run_dir / "aligned")
     instructions = _build_tts_instructions(plan)
+    instructions_applied = bool(instructions and _supports_speech_instructions(model))
+    effective_instructions = instructions if instructions_applied else None
+    timing_mode = str(plan.get("narration_timing_mode") or "locked")
     manifest: Dict[str, Any] = {
         "shotlist_path": str(shotlist_path),
         "model": model,
         "voice": voice,
         "response_format": response_format,
         "instructions": instructions,
+        "instructions_applied": instructions_applied,
+        "timing_mode": timing_mode,
         "segments": [],
     }
 
@@ -46,7 +51,7 @@ def synthesize_narration(
             model=model,
             voice=voice,
             input_text=segment["narration_line"],
-            instructions=instructions,
+            instructions=effective_instructions,
             response_format=response_format,
         )
         write_bytes(raw_path, audio_bytes)
@@ -54,11 +59,17 @@ def synthesize_narration(
         raw_info = probe_media(raw_path)
         aligned_path = aligned_dir / f"{stem}.wav"
         clip_seconds = float(segment["seconds"])
-        offset_ms = int(segment.get("narration_offset_ms") or default_offset_ms)
+        offset_ms = int(segment["narration_offset_ms"])
+        hold_after_narration_ms = int(segment.get("hold_after_narration_ms") or 0)
+        stitch_seconds = resolve_segment_stitch_seconds(
+            segment,
+            raw_duration_seconds=raw_info.duration_seconds,
+            timing_mode=timing_mode,
+        )
         align_audio_to_duration(
             input_audio_path=raw_path,
             output_audio_path=aligned_path,
-            duration_seconds=clip_seconds,
+            duration_seconds=stitch_seconds,
             offset_ms=offset_ms,
             overwrite=True,
         )
@@ -73,6 +84,8 @@ def synthesize_narration(
                 "narration_cue": segment["narration_cue"],
                 "narration_line": segment["narration_line"],
                 "narration_offset_ms": offset_ms,
+                "hold_after_narration_ms": hold_after_narration_ms,
+                "stitch_seconds": stitch_seconds,
                 "raw_audio_path": str(raw_path),
                 "aligned_audio_path": str(aligned_path),
                 "raw_duration_seconds": raw_info.duration_seconds,
@@ -111,6 +124,11 @@ def _build_tts_instructions(plan: Dict[str, Any]) -> str:
         "to understand on first listen. Avoid sounding like an ad, a cartoon character, or a theatrical trailer voice."
     )
     return " ".join(parts)
+
+
+def _supports_speech_instructions(model: str) -> bool:
+    normalized = str(model or "").strip().lower()
+    return normalized.startswith("gpt-4o-mini-tts")
 
 
 def _audio_extension(response_format: str) -> str:

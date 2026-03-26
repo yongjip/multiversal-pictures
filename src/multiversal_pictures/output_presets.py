@@ -36,6 +36,7 @@ OUTPUT_PRESETS: Dict[str, Dict[str, str]] = {
         "subtitle_layout": "vertical",
         "subtitle_position": "bottom_raised",
         "format_guidance": "Compose for 9:16 vertical framing with quick, simple subject reads. Center the subject, prioritize one clear action per shot, and reserve a taller raised lower subtitle-safe band.",
+        "narration_timing_mode": "compact",
     },
     "storybook-pro-landscape": {
         "size": "1792x1024",
@@ -52,6 +53,7 @@ OUTPUT_PRESETS: Dict[str, Dict[str, str]] = {
         "subtitle_layout": "vertical",
         "subtitle_position": "bottom_raised",
         "format_guidance": "Compose for premium 9:16 vertical framing. Keep the hero subject centered, stack action vertically, protect a taller raised lower subtitle-safe band, and avoid important details at the top and bottom extremes.",
+        "narration_timing_mode": "compact",
     },
 }
 
@@ -95,4 +97,6 @@ def preset_project_overrides(
     resolved["subtitle_layout"] = preset["subtitle_layout"]
     resolved["subtitle_position"] = preset["subtitle_position"]
     resolved["format_guidance"] = preset["format_guidance"]
+    if preset.get("narration_timing_mode") and not resolved.get("narration_timing_mode"):
+        resolved["narration_timing_mode"] = preset["narration_timing_mode"]
     return resolved

@@ -23,7 +23,7 @@ Pair this guide with:
 - format: 9:16 vertical
 - audience: broad English-speaking viewers
 - structure: one core claim, one early proof point, 5 to 7 beats
-- production style: hybrid proof-based
+- production style: hybrid proof-based animation
 - publication cadence: one flagship Short per week
 
 ## Core Rule
@@ -67,6 +67,13 @@ Before shot planning, label each beat as one of:
 - `overlay plate`: generated background with space reserved for a real overlay
 - `manual proof`: real screen capture or external edit element
 
+Default visual bias for this workflow:
+
+- stylized motion graphics
+- illustrated textures or cut-paper depth
+- bold silhouette readability on mobile
+- one clear motion change per shot
+
 Important:
 
 - `multiversal-pictures` v1 does **not** ingest real proof clips directly into the shot pipeline
@@ -83,6 +90,7 @@ The prompt should already include:
 - the narration structure
 - visual constraints
 - proof-beat notes
+- an animation-first bias instead of photoreal human acting
 
 ### 4. Generate the shot list
 
@@ -141,20 +149,20 @@ Do not run the full batch until the pilot shot is compositionally correct.
 
 ### 7. Compare narration voices before the final pass
 
-Generate narration for both `alloy` and `nova`, then keep the clearer take.
+Generate narration for both `cedar` and `marin`, then keep the clearer take.
 
 ```bash
 multiversal-pictures synthesize-narration \
   --shotlist /Users/yongjip/Projects/potato-king/examples/hybrid_proof_short_shotlist.json \
-  --output-dir /Users/yongjip/Projects/potato-king/runs/hybrid_short_alloy/narration \
-  --voice alloy
+  --output-dir /Users/yongjip/Projects/potato-king/runs/hybrid_short_cedar/narration \
+  --voice cedar
 ```
 
 ```bash
 multiversal-pictures synthesize-narration \
   --shotlist /Users/yongjip/Projects/potato-king/examples/hybrid_proof_short_shotlist.json \
-  --output-dir /Users/yongjip/Projects/potato-king/runs/hybrid_short_nova/narration \
-  --voice nova
+  --output-dir /Users/yongjip/Projects/potato-king/runs/hybrid_short_marin/narration \
+  --voice marin
 ```
 
 Choose the take that is:
@@ -163,10 +171,12 @@ Choose the take that is:
 - less ad-like
 - more controlled in emphasis
 - better matched to the hook
+- tighter pauses between lines
 
 ### 8. Run the final master pass
 
 Use `balanced` while iterating. Use `master` only for the approved final run.
+`storybook-pro-vertical` now defaults to compact narration timing, so the stitched master trims dead air between beats.
 
 Recommended final command:
 
@@ -181,7 +191,7 @@ multiversal-pictures produce \
   --review-threshold 0.84 \
   --review-best-of 2 \
   --burn-subtitles \
-  --narration-voice alloy \
+  --narration-voice cedar \
   --output /Users/yongjip/Projects/potato-king/runs/hybrid_short_master
 ```
 
@@ -217,6 +227,8 @@ A Short is ready only if:
 - every shot supports the same claim
 - there is no readable generated UI, code, or metric text
 - narration is understandable on first listen
+- unintended line-to-line gaps stay under 0.6 seconds
+- silent tails stay under 0.5 seconds except for the final payoff beat
 - review scores meet or exceed `0.84`
 - subtitles are burned cleanly and remain mobile-readable
 - the final export still works with sound off

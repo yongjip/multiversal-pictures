@@ -51,7 +51,7 @@ class StorybookProductionConfig:
     narration_model: Optional[str] = None
     narration_voice: Optional[str] = None
     narration_response_format: Optional[str] = None
-    default_offset_ms: int = 500
+    default_offset_ms: Optional[int] = None
     with_anchors: Optional[bool] = None
     image_model: Optional[str] = None
     image_quality: Optional[str] = None
@@ -163,9 +163,10 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
     ordered_shots = resolve_shot_order(effective_shotlist["shots"])
     poll_interval = config.poll_interval or int(project.get("poll_interval_seconds") or os.getenv("OPENAI_POLL_INTERVAL_SECONDS", "10"))
     timeout_seconds = config.timeout_seconds or int(os.getenv("OPENAI_VIDEO_TIMEOUT_SECONDS", "1800"))
-    narration_model = config.narration_model or os.getenv("OPENAI_TTS_MODEL", "tts-1-hd")
+    narration_model = config.narration_model or os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
     narration_voice = config.narration_voice or os.getenv("OPENAI_TTS_VOICE", "alloy")
     narration_response_format = config.narration_response_format or os.getenv("OPENAI_TTS_RESPONSE_FORMAT", "wav")
+    default_offset_ms = config.default_offset_ms if config.default_offset_ms is not None else _optional_int_env("STORYBOOK_NARRATION_OFFSET_MS")
 
     narration_manifest = _resume_narration_manifest(run_dir) if config.resume else None
     render_manifest = _resume_render_manifest(run_dir) if config.resume else None
@@ -183,7 +184,7 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
             model=narration_model,
             voice=narration_voice,
             response_format=narration_response_format,
-            default_offset_ms=int(config.default_offset_ms),
+            default_offset_ms=default_offset_ms,
         )
     elif needs_narration or needs_render:
         futures = {}
@@ -213,7 +214,7 @@ def run_storybook_production(config: StorybookProductionConfig) -> Dict[str, Any
                     model=narration_model,
                     voice=narration_voice,
                     response_format=narration_response_format,
-                    default_offset_ms=int(config.default_offset_ms),
+                    default_offset_ms=default_offset_ms,
                 )] = "narration"
 
             for future in as_completed(futures):
@@ -433,6 +434,13 @@ def _resume_render_manifest(run_dir: Path) -> Optional[Dict[str, Any]]:
         if missing_download:
             return None
     return manifest
+
+
+def _optional_int_env(name: str) -> Optional[int]:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return None
+    return int(value)
 
 
 def _resume_review_manifest(run_dir: Path) -> Optional[Dict[str, Any]]:

@@ -125,11 +125,13 @@ def concat_video_clips(
     video_paths: List[Path],
     output_path: Path,
     overwrite: bool = False,
+    clip_durations: Optional[List[Optional[float]]] = None,
 ) -> str:
     if not video_paths:
         raise ValueError("No video paths were provided for stitching.")
 
-    if len(video_paths) == 1:
+    requested_durations = _normalize_clip_durations(video_paths, clip_durations)
+    if len(video_paths) == 1 and requested_durations[0] is None:
         _copy_file(video_paths[0], output_path, overwrite=overwrite)
         info = probe_media(output_path)
         return "clip_audio" if info.has_audio else "video_only"
@@ -137,14 +139,14 @@ def concat_video_clips(
     ffmpeg = ffmpeg_executable()
     infos = [probe_media(path, ffmpeg=ffmpeg) for path in video_paths]
     all_have_audio = all(info.has_audio for info in infos)
+    trim_durations = _resolve_trim_durations(requested_durations=requested_durations, infos=infos)
 
     command = [ffmpeg, "-y" if overwrite else "-n"]
     for path in video_paths:
         command.extend(["-i", str(path)])
 
     if all_have_audio:
-        inputs = "".join(f"[{index}:v:0][{index}:a:0]" for index in range(len(video_paths)))
-        filter_complex = f"{inputs}concat=n={len(video_paths)}:v=1:a=1[v][a]"
+        filter_complex = _concat_filter_complex_with_audio(trim_durations)
         command.extend(
             [
                 "-filter_complex",
@@ -167,8 +169,7 @@ def concat_video_clips(
         _run_ffmpeg(command, error_prefix="Clip stitching failed")
         return "clip_audio"
 
-    video_inputs = "".join(f"[{index}:v:0]" for index in range(len(video_paths)))
-    filter_complex = f"{video_inputs}concat=n={len(video_paths)}:v=1:a=0[v]"
+    filter_complex = _concat_filter_complex_video_only(trim_durations)
     command.extend(
         [
             "-filter_complex",
@@ -514,6 +515,78 @@ def concat_audio_tracks(
         ]
     )
     _run_ffmpeg(command, error_prefix="Narration track concat failed")
+
+
+def _normalize_clip_durations(
+    video_paths: List[Path],
+    clip_durations: Optional[List[Optional[float]]],
+) -> List[Optional[float]]:
+    if clip_durations is None:
+        return [None] * len(video_paths)
+    if len(clip_durations) != len(video_paths):
+        raise ValueError("clip_durations must match the number of video paths.")
+    normalized: List[Optional[float]] = []
+    for value in clip_durations:
+        if value is None:
+            normalized.append(None)
+            continue
+        normalized.append(max(0.0, float(value)))
+    return normalized
+
+
+def _resolve_trim_durations(
+    *,
+    requested_durations: List[Optional[float]],
+    infos: List[MediaInfo],
+) -> List[Optional[float]]:
+    resolved: List[Optional[float]] = []
+    for requested, info in zip(requested_durations, infos):
+        if requested is None:
+            resolved.append(None)
+            continue
+        duration = requested
+        if info.duration_seconds is not None:
+            duration = min(duration, float(info.duration_seconds))
+            if duration >= float(info.duration_seconds) - 0.02:
+                resolved.append(None)
+                continue
+        if duration <= 0.0:
+            resolved.append(None)
+            continue
+        resolved.append(round(duration, 3))
+    return resolved
+
+
+def _concat_filter_complex_with_audio(trim_durations: List[Optional[float]]) -> str:
+    filter_lines: List[str] = []
+    inputs: List[str] = []
+    for index, duration in enumerate(trim_durations):
+        video_label = f"[{index}:v:0]"
+        audio_label = f"[{index}:a:0]"
+        if duration is not None:
+            trimmed_video_label = f"[v{index}]"
+            trimmed_audio_label = f"[a{index}]"
+            filter_lines.append(f"{video_label}trim=duration={duration},setpts=PTS-STARTPTS{trimmed_video_label}")
+            filter_lines.append(f"{audio_label}atrim=duration={duration},asetpts=PTS-STARTPTS{trimmed_audio_label}")
+            video_label = trimmed_video_label
+            audio_label = trimmed_audio_label
+        inputs.append(f"{video_label}{audio_label}")
+    filter_lines.append(f"{''.join(inputs)}concat=n={len(trim_durations)}:v=1:a=1[v][a]")
+    return ";".join(filter_lines)
+
+
+def _concat_filter_complex_video_only(trim_durations: List[Optional[float]]) -> str:
+    filter_lines: List[str] = []
+    inputs: List[str] = []
+    for index, duration in enumerate(trim_durations):
+        video_label = f"[{index}:v:0]"
+        if duration is not None:
+            trimmed_video_label = f"[v{index}]"
+            filter_lines.append(f"{video_label}trim=duration={duration},setpts=PTS-STARTPTS{trimmed_video_label}")
+            video_label = trimmed_video_label
+        inputs.append(video_label)
+    filter_lines.append(f"{''.join(inputs)}concat=n={len(trim_durations)}:v=1:a=0[v]")
+    return ";".join(filter_lines)
 
 
 def _prepare_subtitle_for_burn(subtitle_path: Path) -> Tuple[Path, List[Path]]:

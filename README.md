@@ -36,7 +36,7 @@ OPENAI_AGENT_REASONING_EFFORT=medium
 OPENAI_VIDEO_MODEL=sora-2-pro
 OPENAI_IMAGE_MODEL=gpt-image-1.5
 OPENAI_IMAGE_QUALITY=high
-OPENAI_TTS_MODEL=tts-1-hd
+OPENAI_TTS_MODEL=gpt-4o-mini-tts
 STORYBOOK_QA_MODEL=gpt-5.4
 STORYBOOK_QA_THRESHOLD=0.78
 STORYBOOK_QA_BEST_OF=2
@@ -51,6 +51,7 @@ Weekly flagship Shorts overrides:
 STORYBOOK_REVIEW_MODE=repair
 STORYBOOK_QA_THRESHOLD=0.84
 STORYBOOK_QA_BEST_OF=2
+# OPENAI_TTS_VOICE=cedar
 ```
 
 ## Agent Workflow
@@ -67,7 +68,7 @@ STORYBOOK_QA_BEST_OF=2
 - `create-character`: reference video -> reusable character ID
 
 Output presets: `storybook-landscape`, `storybook-vertical`, `storybook-short`, `storybook-short-vertical`, `storybook-pro-landscape`, `storybook-pro-vertical`
-When a preset is selected, it overrides the project-level default `size`, `seconds`, framing guidance, and subtitle defaults. Vertical presets now default to raised-bottom subtitles.
+When a preset is selected, it overrides the project-level default `size`, `seconds`, framing guidance, and subtitle defaults. Short-form vertical presets now default to `compact` narration timing and raised-bottom subtitles.
 
 Architecture notes: `/Users/yongjip/Projects/potato-king/docs/agent-workflow.md:1`
 Topic research playbook: `/Users/yongjip/Projects/potato-king/docs/topic-research-playbook.md:1`
@@ -86,7 +87,7 @@ Recommended operating loop:
 2. write the approved production prompt using `/Users/yongjip/Projects/potato-king/examples/high_quality_shorts_prompt_template.txt`
 3. generate anchors for human/workspace shots
 4. pilot the riskiest shot with `render-shotlist --only`
-5. compare `alloy` and `nova` narration before the final master pass
+5. compare `cedar` and `marin` narration before the final master pass
 
 Hybrid note: real proof clips and exact UI overlays are still assembled after the selected run. Use the pipeline for AI plates, narration, subtitles, and review, then finish precision proof beats in the final edit.
 
@@ -113,7 +114,7 @@ multiversal-pictures produce \
   --review-threshold 0.84 \
   --review-best-of 2 \
   --burn-subtitles \
-  --narration-voice alloy \
+  --narration-voice cedar \
   --output /Users/yongjip/Projects/potato-king/runs/hybrid_short_master
 ```
 
